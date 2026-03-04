@@ -196,8 +196,8 @@ class PaymentService:
         if not wallet.stripe_account_id:
             return {"success": False, "error": "Stripe Connect account not setup"}
 
-        # Calculate payout amount with fees
-        platform_fee_rate = 0.05  # 5% platform fee
+        # Calculate payout amount with fees (PRD: 70% creator, 30% platform)
+        platform_fee_rate = 0.30  # 30% platform fee per PRD Creator Fund 2.0
         fee_amount = wallet.balance * platform_fee_rate
         net_amount = wallet.balance - fee_amount
 
@@ -208,7 +208,7 @@ class PaymentService:
             amount=wallet.balance,
             net_amount=net_amount,
             fee_amount=fee_amount,
-            description="Weekly payout",
+            description="Monthly payout",
         )
 
         saved_payout = self.repository.save_payout(payout)

@@ -57,7 +57,7 @@ class AnalyticsService:
             saved_analytics = self.repository.save_video_analytics(new_analytics)
 
         # Also track in content performance
-        await this._update_content_performance(video_id, user_id, "view", watch_time)
+        await self._update_content_performance(video_id, user_id, "view", watch_time)
 
         return {"success": True, "analytics": saved_analytics}
 

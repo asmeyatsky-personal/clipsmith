@@ -17,7 +17,7 @@ interface AITemplate {
   tags: string[];
 }
 
-const categories = ['all', 'intro', 'outro', 'social', 'promo', 'vlog', 'music', 'gaming'];
+const categories = ['all', 'cooking', 'fitness', 'education', 'comedy', 'intro', 'outro', 'social', 'promo', 'vlog', 'music', 'gaming', 'beauty', 'travel', 'tech', 'business'];
 const styles = ['all', 'modern', 'vintage', 'cinematic', 'minimal', 'energetic', 'elegant'];
 
 export function TemplateBrowser() {

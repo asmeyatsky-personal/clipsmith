@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useAuthStore } from '@/lib/auth/auth-store';
 import { motion } from 'framer-motion';
@@ -7,9 +8,6 @@ import { Button } from '@/components/ui/button';
 import { Sparkles, ArrowRight, Play, Zap, Shield, Heart } from 'lucide-react';
 import { VideoFeed } from '@/components/video/video-feed';
 import { CreatorDashboard } from '@/components/CreatorDashboard';
-import { motion } from 'framer-motion';
-import { Button } from '@/components/ui/button';
-import { Sparkles, ArrowRight, Play, Zap, Shield, Heart } from 'lucide-react';
 
 export default function Home() {
     const { user } = useAuthStore();

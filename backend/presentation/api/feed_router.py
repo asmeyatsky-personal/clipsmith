@@ -247,3 +247,74 @@ def get_recommended_for_you(
         page_size=page_size,
         total_pages=(total_count + page_size - 1) // page_size,
     )
+
+
+@router.get("/categories/{category_id}")
+def get_category_feed(
+    category_id: str,
+    page: int = 1,
+    page_size: int = 20,
+    video_repo: VideoRepositoryPort = Depends(get_video_repo),
+):
+    """Get videos filtered by category."""
+    valid_categories = [
+        "entertainment", "gaming", "music", "education", "sports",
+        "comedy", "news", "tech", "fashion", "food", "travel", "fitness",
+    ]
+    if category_id not in valid_categories:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid category. Must be one of: {', '.join(valid_categories)}",
+        )
+
+    # Filter videos by category (using title/description keyword matching)
+    all_videos = video_repo.find_all(offset=0, limit=500)
+    category_keywords = {
+        "entertainment": ["entertainment", "show", "drama", "movie"],
+        "gaming": ["game", "gaming", "play", "esports"],
+        "music": ["music", "song", "album", "concert", "beat"],
+        "education": ["learn", "tutorial", "how to", "education", "course"],
+        "sports": ["sport", "game", "match", "workout", "football"],
+        "comedy": ["funny", "comedy", "joke", "humor", "laugh"],
+        "news": ["news", "breaking", "report", "update"],
+        "tech": ["tech", "code", "programming", "software", "ai"],
+        "fashion": ["fashion", "style", "outfit", "clothing"],
+        "food": ["food", "recipe", "cooking", "cook", "meal"],
+        "travel": ["travel", "trip", "destination", "explore"],
+        "fitness": ["fitness", "workout", "exercise", "gym", "health"],
+    }
+
+    keywords = category_keywords.get(category_id, [])
+    filtered = [
+        v for v in all_videos
+        if any(
+            kw in (v.title or "").lower() or kw in (v.description or "").lower()
+            for kw in keywords
+        )
+    ]
+
+    # If no keyword match, fall back to returning recent videos
+    if not filtered:
+        filtered = all_videos
+
+    start_idx = (page - 1) * page_size
+    end_idx = start_idx + page_size
+    paginated = filtered[start_idx:end_idx]
+
+    video_responses = [
+        VideoResponseDTO(
+            id=v.id, title=v.title, description=v.description,
+            creator_id=v.creator_id, url=v.url, thumbnail_url=v.thumbnail_url,
+            status=v.status, views=v.views, likes=v.likes,
+            duration=v.duration, created_at=v.created_at,
+        )
+        for v in paginated
+    ]
+
+    return PaginatedVideoResponseDTO(
+        items=video_responses,
+        total=len(filtered),
+        page=page,
+        page_size=page_size,
+        total_pages=(len(filtered) + page_size - 1) // page_size,
+    )

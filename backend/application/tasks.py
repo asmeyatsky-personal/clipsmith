@@ -47,6 +47,7 @@ VIDEO_RESOLUTIONS = {
     "360p": {"width": 640, "height": 360, "bitrate": "500k"},
     "720p": {"width": 1280, "height": 720, "bitrate": "1500k"},
     "1080p": {"width": 1920, "height": 1080, "bitrate": "3000k"},
+    "2160p": {"width": 3840, "height": 2160, "bitrate": "12000k"},
 }
 
 
@@ -230,7 +231,9 @@ def process_video_task(video_id: str, uploaded_file_path: str):
 
             # Determine which resolutions to generate based on original quality
             target_resolutions = []
-            if original_height >= 1080:
+            if original_height >= 2160:
+                target_resolutions = ["2160p", "1080p", "720p", "360p"]
+            elif original_height >= 1080:
                 target_resolutions = ["1080p", "720p", "360p"]
             elif original_height >= 720:
                 target_resolutions = ["720p", "360p"]

@@ -7,6 +7,8 @@ import uuid
 # We need a dedicated DB model that maps to the SQL table
 # but also aligns with the Domain Entity
 class UserDB(SQLModel, table=True):
+    __tablename__ = "users"
+
     id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
     username: str = Field(index=True)
     email: str = Field(unique=True, index=True)
@@ -14,6 +16,10 @@ class UserDB(SQLModel, table=True):
     is_active: bool = Field(default=True)
     created_at: datetime = Field(default_factory=datetime.now)
     updated_at: datetime = Field(default_factory=datetime.now)
+
+    # Relationships (back-references for payment models)
+    transactions: List["TransactionDB"] = Relationship(back_populates="user")
+    wallet: Optional["CreatorWalletDB"] = Relationship(back_populates="user")
 
 
 class VideoDB(SQLModel, table=True):
@@ -480,7 +486,7 @@ class CreatorWalletDB(SQLModel, table=True):
     currency: str = Field(default="USD")
     status: str = Field(default="active")  # WalletStatus enum value
     stripe_account_id: Optional[str] = Field(index=True)
-    payout_schedule: str = Field(default="weekly")
+    payout_schedule: str = Field(default="monthly")
     minimum_payout: float = Field(default=10.0)
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: Optional[datetime] = None
@@ -488,7 +494,6 @@ class CreatorWalletDB(SQLModel, table=True):
 
     # Relationships
     user: "UserDB" = Relationship(back_populates="wallet")
-    transactions: List["TransactionDB"] = Relationship(back_populates="user")
     payouts: List["PayoutDB"] = Relationship(back_populates="wallet")
 
 
@@ -664,3 +669,595 @@ class ProjectMonetizationDB(SQLModel, table=True):
     subscription_tier_name: str = Field(default="Premium")
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: Optional[datetime] = None
+
+
+# ============================================================
+# PRD Conformance Models - Community & Social Features
+# ============================================================
+
+
+class CircleDB(SQLModel, table=True):
+    """Creator circles/interest groups."""
+
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
+    user_id: str = Field(index=True)  # Owner
+    name: str
+    description: Optional[str] = None
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class CircleMemberDB(SQLModel, table=True):
+    """Members of a creator circle."""
+
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
+    circle_id: str = Field(index=True)
+    member_id: str = Field(index=True)  # Followed creator user_id
+    added_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class PlaylistDB(SQLModel, table=True):
+    """Collaborative playlists."""
+
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
+    creator_id: str = Field(index=True)
+    title: str
+    description: Optional[str] = None
+    is_collaborative: bool = Field(default=False)
+    is_public: bool = Field(default=True)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class PlaylistItemDB(SQLModel, table=True):
+    """Items within a playlist."""
+
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
+    playlist_id: str = Field(index=True)
+    video_id: str = Field(index=True)
+    position: int
+    added_by: str = Field(index=True)
+    added_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class PlaylistCollaboratorDB(SQLModel, table=True):
+    """Collaborators on a playlist."""
+
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
+    playlist_id: str = Field(index=True)
+    user_id: str = Field(index=True)
+    added_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class ChallengeDB(SQLModel, table=True):
+    """Hashtag challenges."""
+
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
+    hashtag_id: str = Field(index=True)
+    creator_id: str = Field(index=True)
+    title: str
+    description: Optional[str] = None
+    rules: Optional[str] = None
+    start_date: Optional[datetime] = None
+    end_date: Optional[datetime] = None
+    prize_description: Optional[str] = None
+    status: str = Field(default="upcoming", index=True)  # active/ended/upcoming
+    participant_count: int = Field(default=0)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class ChallengeParticipantDB(SQLModel, table=True):
+    """Participants in a hashtag challenge."""
+
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
+    challenge_id: str = Field(index=True)
+    user_id: str = Field(index=True)
+    video_id: str = Field(index=True)
+    joined_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class CommunityGroupDB(SQLModel, table=True):
+    """Creator-led community groups."""
+
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
+    creator_id: str = Field(index=True)
+    name: str
+    description: Optional[str] = None
+    rules: Optional[str] = None
+    member_count: int = Field(default=0)
+    is_public: bool = Field(default=True)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class CommunityMemberDB(SQLModel, table=True):
+    """Members of a community group."""
+
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
+    group_id: str = Field(index=True)
+    user_id: str = Field(index=True)
+    role: str = Field(default="member", index=True)  # member/moderator/admin
+    joined_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class DiscussionPostDB(SQLModel, table=True):
+    """Discussion posts within community groups."""
+
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
+    group_id: str = Field(index=True)
+    user_id: str = Field(index=True)
+    content: str
+    parent_id: Optional[str] = Field(default=None, index=True)  # For replies
+    likes_count: int = Field(default=0)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class EventDB(SQLModel, table=True):
+    """Events (online, in-person, hybrid)."""
+
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
+    creator_id: str = Field(index=True)
+    group_id: Optional[str] = Field(default=None, index=True)
+    title: str
+    description: Optional[str] = None
+    event_type: str = Field(index=True)  # online/in_person/hybrid
+    start_time: datetime
+    end_time: datetime
+    location: Optional[str] = None
+    max_attendees: Optional[int] = None
+    attendee_count: int = Field(default=0)
+    status: str = Field(default="upcoming", index=True)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class EventAttendeeDB(SQLModel, table=True):
+    """Attendees for an event."""
+
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
+    event_id: str = Field(index=True)
+    user_id: str = Field(index=True)
+    rsvp_status: str = Field(default="going", index=True)  # going/maybe/not_going
+    registered_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+# ============================================================
+# PRD Conformance Models - Video Collaboration & Interaction
+# ============================================================
+
+
+class DuetDB(SQLModel, table=True):
+    """Duets and reaction videos."""
+
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
+    original_video_id: str = Field(index=True)
+    response_video_id: str = Field(index=True)
+    creator_id: str = Field(index=True)
+    duet_type: str = Field(index=True)  # duet/reaction/stitch
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class CollaborativeVideoDB(SQLModel, table=True):
+    """Multi-creator collaborative videos."""
+
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
+    video_id: str = Field(index=True)
+    status: str = Field(default="draft", index=True)  # draft/recording/editing/published
+    max_participants: int = Field(default=4)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class VideoCollaboratorDB(SQLModel, table=True):
+    """Collaborators on a multi-creator video."""
+
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
+    collaborative_video_id: str = Field(index=True)
+    user_id: str = Field(index=True)
+    role: str = Field(default="participant", index=True)  # host/participant
+    joined_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class LiveStreamDB(SQLModel, table=True):
+    """Live streaming sessions."""
+
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
+    creator_id: str = Field(index=True)
+    title: str
+    description: Optional[str] = None
+    status: str = Field(default="scheduled", index=True)  # scheduled/live/ended
+    viewer_count: int = Field(default=0)
+    peak_viewers: int = Field(default=0)
+    started_at: Optional[datetime] = None
+    ended_at: Optional[datetime] = None
+    scheduled_for: Optional[datetime] = None
+    recording_url: Optional[str] = None
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class LiveStreamGuestDB(SQLModel, table=True):
+    """Guests in a live stream."""
+
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
+    stream_id: str = Field(index=True)
+    user_id: str = Field(index=True)
+    status: str = Field(default="invited", index=True)  # invited/joined/left
+    joined_at: Optional[datetime] = None
+
+
+class WatchPartyDB(SQLModel, table=True):
+    """Synchronized viewing parties."""
+
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
+    host_id: str = Field(index=True)
+    video_id: str = Field(index=True)
+    title: str
+    status: str = Field(default="waiting", index=True)  # waiting/playing/ended
+    participant_count: int = Field(default=0)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class WatchPartyParticipantDB(SQLModel, table=True):
+    """Participants in a watch party."""
+
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
+    party_id: str = Field(index=True)
+    user_id: str = Field(index=True)
+    joined_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+# ============================================================
+# PRD Conformance Models - In-Video Features
+# ============================================================
+
+
+class PollDB(SQLModel, table=True):
+    """In-video polls and quizzes."""
+
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
+    video_id: str = Field(index=True)
+    creator_id: str = Field(index=True)
+    question: str
+    poll_type: str = Field(index=True)  # poll/quiz
+    correct_answer: Optional[str] = None  # For quizzes
+    start_time: float  # Time in video (seconds)
+    end_time: float
+    total_votes: int = Field(default=0)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class PollOptionDB(SQLModel, table=True):
+    """Options for a poll or quiz."""
+
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
+    poll_id: str = Field(index=True)
+    text: str
+    vote_count: int = Field(default=0)
+    is_correct: bool = Field(default=False)  # For quiz
+
+
+class PollVoteDB(SQLModel, table=True):
+    """Votes on a poll option."""
+
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
+    poll_id: str = Field(index=True)
+    option_id: str = Field(index=True)
+    user_id: str = Field(index=True)
+    voted_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class ChapterMarkerDB(SQLModel, table=True):
+    """Chapter markers for video navigation."""
+
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
+    video_id: str = Field(index=True)
+    title: str
+    start_time: float
+    end_time: float
+    thumbnail_url: Optional[str] = None
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class ProductTagDB(SQLModel, table=True):
+    """Shoppable product tags in videos."""
+
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
+    video_id: str = Field(index=True)
+    creator_id: str = Field(index=True)
+    product_name: str
+    product_url: str
+    product_image_url: Optional[str] = None
+    price: float
+    currency: str = Field(default="USD")
+    position_x: float  # Horizontal position in video frame
+    position_y: float  # Vertical position in video frame
+    start_time: float
+    end_time: float
+    click_count: int = Field(default=0)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class VideoLinkDB(SQLModel, table=True):
+    """Link-in-bio per video."""
+
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
+    video_id: str = Field(index=True)
+    creator_id: str = Field(index=True)
+    title: str
+    url: str
+    icon: Optional[str] = None
+    position: int = Field(default=0)
+    click_count: int = Field(default=0)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+# ============================================================
+# PRD Conformance Models - Messaging
+# ============================================================
+
+
+class DirectMessageDB(SQLModel, table=True):
+    """Direct messages with E2E encryption support."""
+
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
+    sender_id: str = Field(index=True)
+    receiver_id: str = Field(index=True)
+    content: str  # Encrypted content
+    is_encrypted: bool = Field(default=True)
+    read_at: Optional[datetime] = None
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class ConversationDB(SQLModel, table=True):
+    """Conversations between two users."""
+
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
+    participant_1_id: str = Field(index=True)
+    participant_2_id: str = Field(index=True)
+    last_message_at: Optional[datetime] = None
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+# ============================================================
+# PRD Conformance Models - Badges & Gamification
+# ============================================================
+
+
+class BadgeDB(SQLModel, table=True):
+    """Supporter badges and achievements."""
+
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
+    name: str
+    description: Optional[str] = None
+    icon_url: Optional[str] = None
+    badge_type: str = Field(index=True)  # supporter/creator/achievement
+    requirement_type: Optional[str] = None
+    requirement_value: Optional[str] = None
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class UserBadgeDB(SQLModel, table=True):
+    """Badges earned by users."""
+
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
+    user_id: str = Field(index=True)
+    badge_id: str = Field(index=True)
+    earned_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+# ============================================================
+# PRD Conformance Models - Courses & Education
+# ============================================================
+
+
+class CourseDB(SQLModel, table=True):
+    """Course/tutorial monetization."""
+
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
+    creator_id: str = Field(index=True)
+    title: str
+    description: Optional[str] = None
+    price: float
+    currency: str = Field(default="USD")
+    category: str = Field(index=True)
+    status: str = Field(default="draft", index=True)  # draft/published/archived
+    enrollment_count: int = Field(default=0)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class CourseLessonDB(SQLModel, table=True):
+    """Lessons within a course."""
+
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
+    course_id: str = Field(index=True)
+    title: str
+    description: Optional[str] = None
+    video_id: Optional[str] = Field(default=None, index=True)
+    position: int
+    duration: float = Field(default=0.0)
+    is_free_preview: bool = Field(default=False)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class CourseEnrollmentDB(SQLModel, table=True):
+    """User enrollments in courses."""
+
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
+    course_id: str = Field(index=True)
+    user_id: str = Field(index=True)
+    status: str = Field(default="enrolled", index=True)
+    progress_percentage: float = Field(default=0.0)
+    enrolled_at: datetime = Field(default_factory=datetime.utcnow)
+    completed_at: Optional[datetime] = None
+
+
+# ============================================================
+# PRD Conformance Models - Feed & User Preferences
+# ============================================================
+
+
+class UserPreferencesDB(SQLModel, table=True):
+    """Feed customization preferences."""
+
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
+    user_id: str = Field(unique=True, index=True)
+    interest_weight: float = Field(default=1.0)
+    community_weight: float = Field(default=1.0)
+    virality_weight: float = Field(default=1.0)
+    freshness_weight: float = Field(default=1.0)
+    preferred_categories: Optional[str] = None  # JSON array
+    preferred_languages: Optional[str] = None  # JSON array
+    location: Optional[str] = None
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: Optional[datetime] = None
+
+
+class FavoriteCreatorDB(SQLModel, table=True):
+    """Priority notifications for favorite creators."""
+
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
+    user_id: str = Field(index=True)
+    creator_id: str = Field(index=True)
+    priority_notifications: bool = Field(default=True)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+# ============================================================
+# PRD Conformance Models - Creator Fund & Monetization
+# ============================================================
+
+
+class CreatorFundEligibilityDB(SQLModel, table=True):
+    """Creator Fund eligibility thresholds."""
+
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
+    user_id: str = Field(unique=True, index=True)
+    follower_count: int = Field(default=0)
+    monthly_views: int = Field(default=0)
+    is_eligible: bool = Field(default=False)
+    applied_at: Optional[datetime] = None
+    approved_at: Optional[datetime] = None
+    status: str = Field(default="pending", index=True)  # pending/approved/rejected
+
+
+class SubscriptionTierDB(SQLModel, table=True):
+    """Preset subscription tiers for creators."""
+
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
+    creator_id: str = Field(index=True)
+    name: str
+    price: float
+    currency: str = Field(default="USD")
+    interval: str  # month/year
+    description: Optional[str] = None
+    benefits: Optional[str] = None  # JSON array of benefits
+    is_active: bool = Field(default=True)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+# ============================================================
+# PRD Conformance Models - GDPR & Compliance
+# ============================================================
+
+
+class GDPRRequestDB(SQLModel, table=True):
+    """GDPR compliance requests."""
+
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
+    user_id: str = Field(index=True)
+    request_type: str = Field(index=True)  # data_export/deletion/consent_withdrawal/access/rectification/portability
+    status: str = Field(default="pending", index=True)  # pending/processing/completed/failed
+    result_url: Optional[str] = None
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    completed_at: Optional[datetime] = None
+
+
+class ConsentRecordDB(SQLModel, table=True):
+    """GDPR consent records."""
+
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
+    user_id: str = Field(index=True)
+    consent_type: str = Field(index=True)
+    granted: bool = Field(default=False)
+    ip_address: Optional[str] = None
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+# ============================================================
+# PRD Conformance Models - Video Editing Tools
+# ============================================================
+
+
+class ColorGradingPresetDB(SQLModel, table=True):
+    """Professional color grading presets."""
+
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
+    name: str
+    description: Optional[str] = None
+    category: str = Field(index=True)
+    settings: str  # JSON with brightness/contrast/saturation/etc
+    is_system: bool = Field(default=False)
+    creator_id: Optional[str] = Field(default=None, index=True)  # Nullable for system presets
+    usage_count: int = Field(default=0)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class EffectLibraryDB(SQLModel, table=True):
+    """Expanded effects library."""
+
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
+    name: str
+    description: Optional[str] = None
+    category: str = Field(index=True)
+    effect_type: str = Field(index=True)
+    parameters: Optional[str] = None  # JSON
+    thumbnail_url: Optional[str] = None
+    is_premium: bool = Field(default=False)
+    is_ar: bool = Field(default=False)
+    usage_count: int = Field(default=0)
+    creator_id: Optional[str] = Field(default=None, index=True)  # Nullable
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class VideoSpeedSettingDB(SQLModel, table=True):
+    """Speed persistence for video editing."""
+
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
+    project_id: str = Field(index=True)
+    track_id: str = Field(index=True)
+    speed: float = Field(default=1.0)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+# ============================================================
+# PRD Conformance Models - Analytics & Traffic
+# ============================================================
+
+
+class TrafficSourceDB(SQLModel, table=True):
+    """Traffic source attribution."""
+
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
+    video_id: str = Field(index=True)
+    source_type: str = Field(index=True)  # direct/search/feed/share/external
+    referrer_url: Optional[str] = None
+    user_id: Optional[str] = Field(default=None, index=True)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class RetentionDataDB(SQLModel, table=True):
+    """Video retention tracking data."""
+
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
+    video_id: str = Field(index=True)
+    second_offset: int  # Second in the video
+    viewer_count: int = Field(default=0)
+    drop_off_count: int = Field(default=0)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class PostingTimeRecommendationDB(SQLModel, table=True):
+    """Best posting time recommendations."""
+
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
+    user_id: str = Field(index=True)
+    day_of_week: int  # 0=Monday, 6=Sunday
+    hour: int  # 0-23
+    engagement_score: float = Field(default=0.0)
+    sample_size: int = Field(default=0)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)

@@ -33,7 +33,7 @@ pycparser==2.23
 pydantic==2.12.5
 pydantic_core==2.41.5
 python-dateutil==2.9.0.post0
-python-jose==3.5.0
+python-jose[cryptography]==3.3.0
 python-multipart==0.0.20
 pytz==2025.2
 redis==6.4.0
@@ -56,13 +56,11 @@ pytest==8.3.5
 httpx==0.28.1
 boto3==1.35.11
 botocore==1.35.11
-pyotp==2.9.0  # For 2FA
-python-jose[cryptography]==3.3.0  # Enhanced JWT with 2FA support
-sentry-sdk[fastapi]==2.14.0  # Error tracking and performance monitoring
-structlog==23.3.0  # Structured logging
-python-json-logger==2.0.8  # JSON logging utilities
-prometheus-client==0.21.0  # Prometheus metrics
-psutil==6.1.0  # System monitoring
-bleach==6.2.0  # HTML sanitization
-pyotp==2.9.0  # TOTP for 2FA
-qrcode[pil]==7.4.2  # QR code generation
+pyotp==2.9.0
+sentry-sdk[fastapi]==2.14.0
+structlog==23.3.0
+python-json-logger==2.0.7
+prometheus-client==0.21.0
+psutil==6.1.0
+bleach==6.2.0
+qrcode[pil]==7.4.2

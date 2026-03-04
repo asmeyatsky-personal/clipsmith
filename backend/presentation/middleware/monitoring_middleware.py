@@ -2,6 +2,7 @@ import time
 import logging
 from typing import Callable
 from fastapi import Request, Response
+from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 from ...application.services.monitoring_service import (
     monitoring_service,
@@ -17,7 +18,7 @@ class MonitoringMiddleware(BaseHTTPMiddleware):
         start_time = time.time()
 
         # Get client IP and user agent
-        client_ip = request.client.host
+        client_ip = request.client.host if request.client else "unknown"
         user_agent = request.headers.get("user-agent", "Unknown")
 
         # Get user from request state if available
@@ -65,7 +66,7 @@ class MonitoringMiddleware(BaseHTTPMiddleware):
             response.headers["X-Response-Time"] = f"{process_time:.3f}"
             response.headers["X-Request-ID"] = str(
                 int(time.time() * 1000)
-            )  # Unique request ID
+            )
 
             return response
 
@@ -109,8 +110,12 @@ class MonitoringMiddleware(BaseHTTPMiddleware):
                 },
             )
 
-            # Re-raise exception
-            raise e
+            # Return a JSON error response instead of re-raising
+            # This ensures CORS headers are properly added by outer middleware
+            return JSONResponse(
+                status_code=500,
+                content={"detail": "Internal server error"},
+            )
 
 
 class HealthCheckMiddleware:
@@ -120,23 +125,15 @@ class HealthCheckMiddleware:
         self.app = app
 
     async def __call__(self, scope, receive, send):
-        # Check if this is a health check request
-        if scope["type"] == "http" and scope["path"] == "/health":
-            health_status = monitoring_service.get_health_status()
-            return await send(
-                {
-                    "type": "http.response.start",
-                    "status": 200,
-                    "headers": {"content-type": "application/json"},
-                }
-            )
-
-        # Regular request - pass through
+        # Pass through to app for all requests (let the /health route handle it)
         await self.app(scope, receive, send)
 
 
 class UserActivityMiddleware:
     """Middleware to track user activity."""
+
+    def __init__(self, app):
+        self.app = app
 
     async def __call__(self, scope, receive, send):
         # Extract user from JWT token if available

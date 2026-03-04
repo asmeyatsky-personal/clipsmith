@@ -43,8 +43,8 @@ export function Timeline({ duration, playhead, onPlayheadChange }: TimelineProps
         return `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
     };
 
-    // Hardcode 3 tracks for now
-    const tracks = [1, 2, 3];
+    // Support 10+ tracks per PRD requirement (12 tracks)
+    const tracks = Array.from({length: 12}, (_, i) => i + 1);
 
     return (
         <div className="w-full h-full flex flex-col p-2 bg-gray-200 dark:bg-gray-700 rounded-lg">
@@ -60,9 +60,9 @@ export function Timeline({ duration, playhead, onPlayheadChange }: TimelineProps
             </div>
 
             {/* Tracks Container */}
-            <div className="relative flex-1" ref={timelineRef} onMouseDown={handleMouseDown}>
+            <div className="relative flex-1 overflow-y-auto" ref={timelineRef} onMouseDown={handleMouseDown}>
                 {tracks.map(trackNum => (
-                    <div key={trackNum} className="relative w-full h-1/3 border-b border-gray-300 dark:border-gray-600 last:border-b-0 flex items-center px-2">
+                    <div key={trackNum} className="relative w-full h-8 min-h-[2rem] border-b border-gray-300 dark:border-gray-600 last:border-b-0 flex items-center px-2">
                         <span className="text-xs text-gray-500 mr-2">Track {trackNum}</span>
                         {/* Placeholder for clips */}
                         {trackNum === 1 && ( // Example clip on first track

@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import Dict, List, Optional
 from sqlmodel import Session, select, func, and_, desc
 from ...domain.entities.content_moderation import (
     ContentModeration,

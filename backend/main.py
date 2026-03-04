@@ -14,6 +14,13 @@ from .presentation.api.video_editor_router import router as video_editor_router
 from .presentation.api.payment_router import router as payment_router
 from .presentation.api.analytics_router import router as analytics_router
 from .presentation.api.ai_router import router as ai_router
+from .presentation.api.community_router import router as community_router
+from .presentation.api.social_router import router as social_router
+from .presentation.api.engagement_router import router as engagement_router
+from .presentation.api.discovery_router import router as discovery_router
+from .presentation.api.course_router import router as course_router
+from .presentation.api.compliance_router import router as compliance_router
+from .presentation.api.two_factor_router import router as two_factor_router
 from .presentation.middleware.monitoring_middleware import (
     MonitoringMiddleware,
     HealthCheckMiddleware,
@@ -70,7 +77,8 @@ app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.add_middleware(SlowAPIMiddleware)
 
-# CORS configuration - use environment variable for production
+# CORS must be added last so it's the outermost middleware
+# This ensures CORS headers are added even on error responses
 ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000").split(",")
 
 app.add_middleware(
@@ -96,6 +104,13 @@ app.include_router(video_editor_router)
 app.include_router(payment_router)
 app.include_router(analytics_router)
 app.include_router(ai_router)
+app.include_router(community_router)
+app.include_router(social_router)
+app.include_router(engagement_router)
+app.include_router(discovery_router)
+app.include_router(course_router)
+app.include_router(compliance_router)
+app.include_router(two_factor_router)
 
 
 @app.get("/")

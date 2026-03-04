@@ -3,7 +3,7 @@ import { useRouter } from 'next/navigation';
 import { interactionService } from '@/lib/api/interactions';
 import { useAuthStore } from '@/lib/auth/auth-store';
 import { CommentsSection } from './comments-section';
-import { Play, Heart, MessageCircle, Share2, MoreHorizontal, Eye, Loader2, X, Pencil, DollarSign } from 'lucide-react';
+import { Play, Heart, MessageCircle, Share2, MoreHorizontal, Eye, Loader2, X, Pencil, DollarSign, Info } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -12,20 +12,19 @@ import { TipModal } from '@/components/modals/tip-modal';
 import { sanitizeForReact } from '@/lib/utils/sanitize';
 
 
-interface VideoProps extends VideoResponseDTO {} // Use the DTO for props, or just use VideoResponseDTO directly
+interface VideoProps extends VideoResponseDTO {
+    discoveryReasons?: string[];
+}
 
-import React, { useState, useEffect } from 'react';
-import { formatDistance, formatNumber } from '@/lib/utils';
-import { useAuth } from '@/lib/auth/auth-store';
-import { Link } from 'next/link';
-import { Sparkles, ArrowRight, Play, Zap, Heart } from 'lucide-react';
-
-// Import hooks for payments and analytics
-import { usePayment } from '../hooks/usePayment';
-import { useAnalytics } from '../hooks/useAnalytics';
-            });
-        }
-    }, [user, video.id]);
+export function VideoCard(video: VideoProps) {
+    const router = useRouter();
+    const { user } = useAuthStore();
+    const [isLiked, setIsLiked] = useState(false);
+    const [likes, setLikes] = useState(video.likes || 0);
+    const [isHovered, setIsHovered] = useState(false);
+    const [showComments, setShowComments] = useState(false);
+    const [showTipModal, setShowTipModal] = useState(false);
+    const [showDiscoveryReasons, setShowDiscoveryReasons] = useState(false);
 
     const handleLike = async (e: React.MouseEvent) => {
         e.stopPropagation();
@@ -175,6 +174,45 @@ import { useAnalytics } from '../hooks/useAnalytics';
                             </div>
                         </div>
                     </CardContent>
+
+                    {/* Discovery Score */}
+                    {video.discoveryReasons && video.discoveryReasons.length > 0 && (
+                        <div className="px-3 pb-2">
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    setShowDiscoveryReasons(!showDiscoveryReasons);
+                                }}
+                                className="flex items-center gap-1 text-[10px] sm:text-xs text-zinc-400 hover:text-blue-400 transition-colors"
+                            >
+                                <Info size={12} />
+                                <span>Why this?</span>
+                            </button>
+                            <AnimatePresence>
+                                {showDiscoveryReasons && (
+                                    <motion.div
+                                        initial={{ height: 0, opacity: 0 }}
+                                        animate={{ height: 'auto', opacity: 1 }}
+                                        exit={{ height: 0, opacity: 0 }}
+                                        transition={{ duration: 0.2 }}
+                                        className="overflow-hidden"
+                                    >
+                                        <div className="mt-1.5 p-2 rounded-md bg-zinc-800/80 border border-zinc-700/50">
+                                            <p className="text-[10px] sm:text-xs text-zinc-400 font-medium mb-1">Recommended because:</p>
+                                            <ul className="space-y-0.5">
+                                                {video.discoveryReasons.map((reason, idx) => (
+                                                    <li key={idx} className="text-[10px] sm:text-xs text-zinc-500 flex items-start gap-1">
+                                                        <span className="text-blue-400 mt-0.5">&#8226;</span>
+                                                        <span>{reason}</span>
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        </div>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
+                        </div>
+                    )}
                 </Card>
             </motion.div>
 

@@ -86,7 +86,7 @@ class CreatorWallet:
     currency: str = "USD"
     status: WalletStatus = WalletStatus.ACTIVE
     stripe_account_id: Optional[str] = None  # Stripe Connect account ID
-    payout_schedule: str = "weekly"  # weekly, biweekly, monthly
+    payout_schedule: str = "monthly"  # weekly, biweekly, monthly
     minimum_payout: float = 10.0
     created_at: datetime = field(default_factory=lambda: datetime.utcnow())
     updated_at: Optional[datetime] = None

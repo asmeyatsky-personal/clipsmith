@@ -6,7 +6,7 @@ import { useState, useEffect } from 'react';
 import { useAuthStore } from '@/lib/auth/auth-store';
 import { Button } from '@/components/ui/button';
 import { motion } from 'framer-motion';
-import { LogOut, User, Video, Search, Moon, Sun, X, Sparkles, DollarSign, Layout, Compass } from 'lucide-react';
+import { LogOut, User, Video, Search, Moon, Sun, X, Sparkles, DollarSign, Layout, Compass, Users, MessageSquare, GraduationCap } from 'lucide-react';
 import { UploadModal } from '@/components/video/upload-modal';
 
 export function Navbar() {
@@ -99,6 +99,24 @@ export function Navbar() {
                                 <Button variant="ghost" size="sm" className="rounded-full gap-1">
                                     <DollarSign className="w-4 h-4" />
                                     <span className="hidden sm:inline">Earn</span>
+                                </Button>
+                            </Link>
+                            <Link href="/community">
+                                <Button variant="ghost" size="sm" className="rounded-full gap-1">
+                                    <Users className="w-4 h-4" />
+                                    <span className="hidden sm:inline">Community</span>
+                                </Button>
+                            </Link>
+                            <Link href="/messages">
+                                <Button variant="ghost" size="sm" className="rounded-full gap-1">
+                                    <MessageSquare className="w-4 h-4" />
+                                    <span className="hidden sm:inline">Messages</span>
+                                </Button>
+                            </Link>
+                            <Link href="/courses">
+                                <Button variant="ghost" size="sm" className="rounded-full gap-1">
+                                    <GraduationCap className="w-4 h-4" />
+                                    <span className="hidden sm:inline">Courses</span>
                                 </Button>
                             </Link>
                             <UploadModal onUploadSuccess={() => window.location.reload()} />

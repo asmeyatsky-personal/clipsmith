@@ -63,6 +63,55 @@ interface AdvancedEditorPanelsProps {
   trackId: string;
 }
 
+const effectCategories: Record<string, string[]> = {
+  'Basic': ['blur', 'sharpen', 'glow', 'vignette', 'noise', 'pixelate'],
+  'Color': ['sepia', 'negative', 'posterize', 'solarize', 'threshold', 'duotone', 'hue_shift', 'color_balance'],
+  'Distortion': ['ripple', 'wave', 'twirl', 'bulge', 'pinch', 'spherize', 'lens_distortion', 'fisheye'],
+  'Stylize': ['oil_paint', 'watercolor', 'sketch', 'emboss', 'mosaic', 'stained_glass', 'halftone', 'crosshatch'],
+  'Light': ['lens_flare', 'light_leak', 'bokeh', 'god_rays', 'prism', 'chromatic_aberration', 'bloom'],
+  'Motion': ['motion_blur', 'zoom_blur', 'radial_blur', 'directional_blur', 'ghost', 'echo', 'trail'],
+  'Overlay': ['film_grain', 'dust', 'scratches', 'rain', 'snow', 'fire', 'smoke', 'particles'],
+  'AR': ['face_mesh', 'background_blur', 'beauty', 'cartoon', 'age_filter', 'face_swap'],
+};
+
+function EffectsCategorized({ addEffect }: { addEffect: (effectType: string) => void }) {
+  const [activeCategory, setActiveCategory] = useState<string>('Basic');
+
+  return (
+    <div className="space-y-2">
+      <div className="flex flex-wrap gap-1">
+        {Object.keys(effectCategories).map((category) => (
+          <button
+            key={category}
+            onClick={() => setActiveCategory(category)}
+            className={`px-2 py-0.5 text-xs rounded-full transition-colors ${
+              activeCategory === category
+                ? 'bg-blue-500 text-white'
+                : 'bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600'
+            }`}
+          >
+            {category}
+          </button>
+        ))}
+      </div>
+      <div className="grid grid-cols-2 gap-1.5 max-h-48 overflow-y-auto">
+        {effectCategories[activeCategory]?.map((effect) => (
+          <button
+            key={effect}
+            onClick={() => addEffect(effect)}
+            className="px-2 py-1.5 text-xs bg-gray-200 dark:bg-gray-700 rounded hover:bg-gray-300 dark:hover:bg-gray-600 capitalize text-left"
+          >
+            {effect.replace(/_/g, ' ')}
+          </button>
+        ))}
+      </div>
+      <p className="text-[10px] text-gray-400">
+        {Object.values(effectCategories).flat().length} effects across {Object.keys(effectCategories).length} categories
+      </p>
+    </div>
+  );
+}
+
 export function AdvancedEditorPanels({ projectId, trackId }: AdvancedEditorPanelsProps) {
   const [activePanel, setActivePanel] = useState<string | null>(null);
   const [colorGrade, setColorGrade] = useState<ColorGradeSettings>({
@@ -403,22 +452,12 @@ export function AdvancedEditorPanels({ projectId, trackId }: AdvancedEditorPanel
       </Panel>
 
       <Panel id="effects" title="Effects" icon={Sparkles}>
-        <div className="grid grid-cols-2 gap-2">
-          {['blur', 'sharpen', 'glow', 'vignette', 'noise', 'pixelate'].map((effect) => (
-            <button
-              key={effect}
-              onClick={() => addEffect(effect)}
-              className="px-2 py-1 text-xs bg-gray-200 dark:bg-gray-700 rounded hover:bg-gray-300 dark:hover:bg-gray-600 capitalize"
-            >
-              {effect}
-            </button>
-          ))}
-        </div>
+        <EffectsCategorized addEffect={addEffect} />
         {effects.length > 0 && (
           <div className="space-y-1 mt-2 max-h-32 overflow-y-auto">
             {effects.map((eff) => (
               <div key={eff.id} className="flex justify-between text-xs p-1 bg-gray-100 dark:bg-gray-800 rounded">
-                <span className="capitalize">{eff.effect_type}</span>
+                <span className="capitalize">{eff.effect_type.replace(/_/g, ' ')}</span>
                 <span className={eff.enabled ? 'text-green-500' : 'text-gray-400'}>
                   {eff.enabled ? 'Active' : 'Disabled'}
                 </span>

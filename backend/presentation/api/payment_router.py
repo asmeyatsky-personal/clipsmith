@@ -7,7 +7,7 @@ from ...infrastructure.services.stripe_service import StripeService
 from ...infrastructure.repositories.database import get_session
 from .auth_router import get_current_user
 from ...domain.entities.payment import TransactionType, Transaction
-from sqlmodel import Session
+from sqlmodel import Session, select
 from datetime import datetime
 import json
 
@@ -460,7 +460,7 @@ async def purchase_premium_content(
     existing_purchase = session.exec(
         select(PremiumPurchaseDB).where(
             PremiumPurchaseDB.user_id == current_user["id"],
-            PremiumContentDB.premium_content_id == premium_content_id,
+            PremiumPurchaseDB.premium_content_id == premium_content_id,
             PremiumPurchaseDB.status == "completed",
         )
     ).first()
@@ -513,6 +513,107 @@ async def get_purchased_content(
             )
 
     return {"purchases": result}
+
+
+@router.get("/premium/{video_id}/access")
+async def check_premium_access(
+    video_id: str,
+    current_user: dict = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    """Check if user has access to premium content for a video.
+    Enforces access control: only purchasers, subscribers, or the creator can access."""
+    from ...infrastructure.repositories.models import PremiumContentDB, PremiumPurchaseDB, SubscriptionDB
+
+    premium = session.exec(
+        select(PremiumContentDB).where(
+            PremiumContentDB.video_id == video_id, PremiumContentDB.is_active == True
+        )
+    ).first()
+
+    if not premium:
+        return {"has_access": True, "is_premium": False}
+
+    # Creator always has access
+    if premium.creator_id == current_user["id"]:
+        return {"has_access": True, "is_premium": True, "reason": "creator"}
+
+    # Check purchase
+    purchase = session.exec(
+        select(PremiumPurchaseDB).where(
+            PremiumPurchaseDB.user_id == current_user["id"],
+            PremiumPurchaseDB.premium_content_id == premium.id,
+            PremiumPurchaseDB.status == "completed",
+        )
+    ).first()
+
+    if purchase:
+        return {"has_access": True, "is_premium": True, "reason": "purchased"}
+
+    # Check active subscription to creator
+    subscription = session.exec(
+        select(SubscriptionDB).where(
+            SubscriptionDB.user_id == current_user["id"],
+            SubscriptionDB.creator_id == premium.creator_id,
+            SubscriptionDB.status == "active",
+        )
+    ).first()
+
+    if subscription:
+        return {"has_access": True, "is_premium": True, "reason": "subscriber"}
+
+    return {
+        "has_access": False,
+        "is_premium": True,
+        "price": premium.price,
+        "message": "Purchase required to access this content",
+    }
+
+
+# ==================== Subscription Tiers ====================
+
+
+@router.get("/subscription-tiers/{creator_id}")
+async def get_creator_subscription_tiers(
+    creator_id: str,
+    session: Session = Depends(get_session),
+):
+    """Get predefined subscription tiers for a creator (PRD: $2.99-$9.99/month)."""
+    from ...infrastructure.repositories.models import SubscriptionTierDB
+
+    tiers = session.exec(
+        select(SubscriptionTierDB).where(
+            SubscriptionTierDB.creator_id == creator_id,
+            SubscriptionTierDB.is_active == True,
+        )
+    ).all()
+
+    if not tiers:
+        # Return default PRD tiers
+        return {
+            "tiers": [
+                {"name": "Supporter", "price": 2.99, "interval": "month",
+                 "benefits": ["Ad-free viewing", "Supporter badge", "Early access"]},
+                {"name": "Super Fan", "price": 5.99, "interval": "month",
+                 "benefits": ["All Supporter perks", "Exclusive content", "Behind-the-scenes", "Priority comments"]},
+                {"name": "VIP", "price": 9.99, "interval": "month",
+                 "benefits": ["All Super Fan perks", "Direct messaging", "Monthly Q&A", "Custom badge", "Shoutouts"]},
+            ]
+        }
+
+    return {
+        "tiers": [
+            {
+                "id": t.id,
+                "name": t.name,
+                "price": t.price,
+                "interval": t.interval,
+                "description": t.description,
+                "benefits": t.benefits,
+            }
+            for t in tiers
+        ]
+    }
 
 
 # ==================== Brand Collaboration Endpoints ====================
