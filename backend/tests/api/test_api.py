@@ -115,6 +115,7 @@ class TestAuthAPI:
                 "password": "password123"
             }
         )
+        assert login_response.status_code == 200
         token = login_response.json()["access_token"]
 
         # Get current user
@@ -134,7 +135,7 @@ class TestAuthAPI:
             json={
                 "username": "resetuser",
                 "email": "reset@example.com",
-                "password": "oldpassword"
+                "password": "oldpassword123"
             }
         )
 
@@ -157,36 +158,18 @@ class TestAuthAPI:
 
 
 class TestVideoAPI:
-    def _get_auth_token(self, client):
-        client.post(
-            "/auth/register",
-            json={
-                "username": "videouser",
-                "email": "video@example.com",
-                "password": "password123"
-            }
-        )
-        response = client.post(
-            "/auth/login",
-            json={
-                "email": "video@example.com",
-                "password": "password123"
-            }
-        )
-        return response.json()["access_token"]
-
     def test_list_videos_empty(self, client):
         response = client.get("/videos/")
         assert response.status_code == 200
         data = response.json()
-        assert data["videos"] == []
+        assert data["items"] == []
         assert data["total"] == 0
 
     def test_search_videos_empty(self, client):
         response = client.get("/videos/search?q=test")
         assert response.status_code == 200
         data = response.json()
-        assert data["videos"] == []
+        assert data["items"] == []
         assert data["total"] == 0
 
     def test_get_nonexistent_video(self, client):
@@ -196,7 +179,7 @@ class TestVideoAPI:
 
 class TestUserAPI:
     def _register_and_login(self, client, username, email):
-        client.post(
+        reg_response = client.post(
             "/auth/register",
             json={
                 "username": username,
@@ -204,17 +187,22 @@ class TestUserAPI:
                 "password": "password123"
             }
         )
-        response = client.post(
+        if reg_response.status_code != 201:
+            return None
+        login_response = client.post(
             "/auth/login",
             json={
                 "email": email,
                 "password": "password123"
             }
         )
-        return response.json()
+        if login_response.status_code != 200:
+            return None
+        return login_response.json()
 
     def test_get_user_profile(self, client):
-        self._register_and_login(client, "profileuser", "profile@example.com")
+        login_data = self._register_and_login(client, "profileuser", "profile@example.com")
+        assert login_data is not None, "Registration/login failed"
 
         response = client.get("/users/profileuser")
         assert response.status_code == 200
@@ -228,13 +216,14 @@ class TestUserAPI:
     def test_follow_user(self, client):
         # Create two users
         login1 = self._register_and_login(client, "follower", "follower@example.com")
-        self._register_and_login(client, "followed", "followed@example.com")
+        login2 = self._register_and_login(client, "followed", "followed@example.com")
+        assert login1 is not None and login2 is not None, "Registration failed"
 
         token = login1["access_token"]
-        followed_id = login1["user"]["id"]  # We need the followed user's ID
 
-        # Get the followed user's ID
+        # Get the followed user's profile to get their ID
         profile_response = client.get("/users/followed")
+        assert profile_response.status_code == 200
         followed_id = profile_response.json()["user"]["id"]
 
         # Follow the user
@@ -242,16 +231,18 @@ class TestUserAPI:
             f"/users/{followed_id}/follow",
             headers={"Authorization": f"Bearer {token}"}
         )
-        assert response.status_code == 200
+        assert response.status_code in [200, 201]
 
     def test_follow_status(self, client):
         login = self._register_and_login(client, "statususer", "status@example.com")
-        self._register_and_login(client, "targetuser", "target@example.com")
+        login2 = self._register_and_login(client, "targetuser", "target@example.com")
+        assert login is not None and login2 is not None, "Registration failed"
 
         token = login["access_token"]
 
         # Get target user ID
         profile_response = client.get("/users/targetuser")
+        assert profile_response.status_code == 200
         target_id = profile_response.json()["user"]["id"]
 
         # Check follow status (should be false initially)

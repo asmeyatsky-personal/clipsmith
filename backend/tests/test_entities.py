@@ -38,10 +38,9 @@ def sample_video(sample_user):
     """Create a sample video for testing."""
     return Video(
         id="test_video_123",
-        user_id=sample_user.id,
+        creator_id=sample_user.id,
         url="https://example.com/video.mp4",
-        status=VideoStatus.PROCESSED,
-        created_at=datetime.utcnow(),
+        status=VideoStatus.READY,
     )
 
 
@@ -60,14 +59,14 @@ class TestBasicEntities:
         """Test video entity creation."""
         video = Video(
             id="video_123",
-            user_id=sample_user.id,
+            creator_id=sample_user.id,
             url="https://example.com/video.mp4",
-            status=VideoStatus.PROCESSED,
+            status=VideoStatus.READY,
         )
 
         assert video.id == "video_123"
-        assert video.user_id == sample_user.id
-        assert video.status == VideoStatus.PROCESSED
+        assert video.creator_id == sample_user.id
+        assert video.status == VideoStatus.READY
 
     def test_transaction_creation(self, sample_user):
         """Test transaction entity creation."""
@@ -178,10 +177,10 @@ class TestEnums:
 
     def test_video_status(self):
         """Test video status enum."""
-        assert VideoStatus.UPLOADING == "uploading"
-        assert VideoStatus.PROCESSING == "processing"
-        assert VideoStatus.PROCESSED == "processed"
-        assert VideoStatus.FAILED == "failed"
+        assert VideoStatus.UPLOADING == "UPLOADING"
+        assert VideoStatus.PROCESSING == "PROCESSING"
+        assert VideoStatus.READY == "READY"
+        assert VideoStatus.FAILED == "FAILED"
 
     def test_analytics_metrics(self):
         """Test analytics metric type enum."""
@@ -211,7 +210,10 @@ class TestDatabaseModels:
         from backend.infrastructure.repositories.models import UserDB
 
         user_db = UserDB(
-            id="test_user_123", username="testuser", email="test@example.com"
+            id="test_user_123",
+            username="testuser",
+            email="test@example.com",
+            hashed_password="hashed_test_password",
         )
 
         db_session.add(user_db)
@@ -228,7 +230,10 @@ class TestDatabaseModels:
 
         # Create user first
         user_db = UserDB(
-            id=sample_user.id, username=sample_user.username, email=sample_user.email
+            id=sample_user.id,
+            username=sample_user.username,
+            email=sample_user.email,
+            hashed_password="hashed_test_password",
         )
         db_session.add(user_db)
         db_session.commit()
@@ -236,9 +241,11 @@ class TestDatabaseModels:
         # Create video
         video_db = VideoDB(
             id="test_video_123",
-            user_id=sample_user.id,
+            title="Test Video",
+            description="Test Description",
+            creator_id=sample_user.id,
             url="https://example.com/video.mp4",
-            status="processed",
+            status="READY",
         )
 
         db_session.add(video_db)
@@ -246,8 +253,8 @@ class TestDatabaseModels:
         db_session.refresh(video_db)
 
         assert video_db.id == "test_video_123"
-        assert video_db.user_id == sample_user.id
-        assert video_db.status == "processed"
+        assert video_db.creator_id == sample_user.id
+        assert video_db.status == "READY"
 
 
 if __name__ == "__main__":

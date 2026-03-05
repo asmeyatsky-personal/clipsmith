@@ -18,7 +18,8 @@ class TestUploadVideoUseCase:
             mock_video_queue = MagicMock()
             mock_queue.return_value = mock_video_queue
 
-            use_case = UploadVideoUseCase(video_repo, mock_storage_adapter)
+            mock_hashtag_repo = MagicMock()
+            use_case = UploadVideoUseCase(video_repo, mock_storage_adapter, mock_hashtag_repo)
 
             video_dto = VideoCreateDTO(
                 title="Test Video",

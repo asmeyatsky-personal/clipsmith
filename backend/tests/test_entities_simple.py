@@ -1,5 +1,4 @@
 import pytest
-import asyncio
 from datetime import datetime
 from sqlmodel import create_engine, Session
 from backend.domain.entities.user import User
@@ -40,10 +39,9 @@ def sample_video(sample_user):
     """Create a sample video for testing."""
     return Video(
         id="test_video_123",
-        user_id=sample_user.id,
+        creator_id=sample_user.id,
         url="https://example.com/video.mp4",
-        status=VideoStatus.PROCESSED,
-        created_at=datetime.utcnow(),
+        status=VideoStatus.READY,
     )
 
 
@@ -62,14 +60,14 @@ class TestBasicEntities:
         """Test video entity creation."""
         video = Video(
             id="video_123",
-            user_id=sample_user.id,
+            creator_id=sample_user.id,
             url="https://example.com/video.mp4",
-            status=VideoStatus.PROCESSED,
+            status=VideoStatus.READY,
         )
 
         assert video.id == "video_123"
-        assert video.user_id == sample_user.id
-        assert video.status == VideoStatus.PROCESSED
+        assert video.creator_id == sample_user.id
+        assert video.status == VideoStatus.READY
 
     def test_transaction_creation(self, sample_user):
         """Test transaction entity creation."""
@@ -109,8 +107,6 @@ class TestBusinessLogic:
 
     def test_transaction_completion(self):
         """Test transaction completion logic."""
-        from backend.domain.entities.payment import TransactionStatus
-
         transaction = Transaction(
             id="test_transaction",
             user_id="test_user",
@@ -119,34 +115,13 @@ class TestBusinessLogic:
             status=TransactionStatus.PENDING,
         )
 
-        # Mock the replace method for testing
-        class MockTransaction:
-            def __init__(self, **kwargs):
-                for key, value in kwargs.items():
-                    setattr(self, key, value)
-
-            def complete(self):
-                self.status = TransactionStatus.COMPLETED
-                self.completed_at = datetime.utcnow()
-                return self
-
-        mock_transaction = MockTransaction(
-            id=transaction.id,
-            user_id=transaction.user_id,
-            amount=transaction.amount,
-            transaction_type=transaction.transaction_type,
-            status=transaction.status,
-        )
-
-        completed_transaction = mock_transaction.complete()
+        completed_transaction = transaction.complete()
 
         assert completed_transaction.status == TransactionStatus.COMPLETED
         assert completed_transaction.completed_at is not None
 
     def test_analytics_calculations(self):
         """Test analytics calculation methods."""
-        from backend.domain.entities.analytics import VideoAnalytics
-
         analytics = VideoAnalytics(
             video_id="test_video",
             user_id="test_user",
@@ -159,21 +134,12 @@ class TestBusinessLogic:
             period_end=datetime.utcnow(),
         )
 
-        # Test engagement rate calculation
-        interactions = (
-            analytics.likes + analytics.comments + analytics.shares
-        )  # 25 + 5 + 3 = 33
-        expected_rate = (interactions / analytics.views) * 100  # 33%
+        engagement_rate = analytics.calculate_engagement_rate()
+        expected_rate = (25 + 5 + 3) / 100 * 100  # 33%
+        assert engagement_rate == expected_rate
 
-        # Mock the calculate_engagement_rate method
-        def mock_calculate_rate(self):
-            interactions = self.likes + self.comments + self.shares
-            if self.views == 0:
-                return 0.0
-            return (interactions / self.views) * 100
-
-        actual_rate = mock_calculate_rate(analytics)
-        assert actual_rate == expected_rate
+        avg_watch_time = analytics.calculate_average_watch_time()
+        assert avg_watch_time == 300.0 / 100
 
 
 class TestEnums:
@@ -181,25 +147,19 @@ class TestEnums:
 
     def test_transaction_types(self):
         """Test transaction type enum."""
-        from backend.domain.entities.payment import TransactionType
-
         assert TransactionType.TIP == "tip"
         assert TransactionType.SUBSCRIPTION == "subscription"
         assert TransactionType.REFUND == "refund"
 
     def test_video_status(self):
         """Test video status enum."""
-        from backend.domain.entities.video import VideoStatus
-
-        assert VideoStatus.UPLOADING == "uploading"
-        assert VideoStatus.PROCESSING == "processing"
-        assert VideoStatus.PROCESSED == "processed"
-        assert VideoStatus.FAILED == "failed"
+        assert VideoStatus.UPLOADING == "UPLOADING"
+        assert VideoStatus.PROCESSING == "PROCESSING"
+        assert VideoStatus.READY == "READY"
+        assert VideoStatus.FAILED == "FAILED"
 
     def test_analytics_metrics(self):
         """Test analytics metric enum."""
-        from backend.domain.entities.analytics import MetricType
-
         assert MetricType.VIEWS == "views"
         assert MetricType.LIKES == "likes"
         assert MetricType.COMMENTS == "comments"
@@ -207,8 +167,6 @@ class TestEnums:
 
     def test_time_periods(self):
         """Test time period enum."""
-        from backend.domain.entities.analytics import TimePeriod
-
         assert TimePeriod.HOUR == "hour"
         assert TimePeriod.DAY == "day"
         assert TimePeriod.WEEK == "week"

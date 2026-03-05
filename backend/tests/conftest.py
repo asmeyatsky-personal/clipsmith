@@ -3,6 +3,7 @@ os.environ.setdefault("JWT_SECRET_KEY", "test-secret-key-for-tests-only-not-prod
 
 import pytest
 from sqlmodel import Session, SQLModel, create_engine
+from sqlalchemy.pool import StaticPool
 from fastapi.testclient import TestClient
 from backend.infrastructure.repositories.models import UserDB, VideoDB, LikeDB, CommentDB, CaptionDB, PasswordResetDB
 from backend.infrastructure.repositories.sqlite_user_repo import SQLiteUserRepository
@@ -10,12 +11,18 @@ from backend.infrastructure.repositories.sqlite_video_repo import SQLiteVideoRep
 from backend.infrastructure.repositories.sqlite_interaction_repo import SQLiteInteractionRepository
 from backend.infrastructure.repositories.sqlite_caption_repo import SQLiteCaptionRepository
 from backend.infrastructure.repositories.sqlite_follow_repo import SQLiteFollowRepository
-from backend.main import app
+from backend.main import app, limiter
+from backend.presentation.api.auth_router import limiter as auth_limiter
 from backend.infrastructure.repositories.database import get_session
 
 @pytest.fixture(name="engine")
 def engine_fixture():
-    engine = create_engine("sqlite:///:memory:", echo=False)
+    engine = create_engine(
+        "sqlite:///:memory:",
+        echo=False,
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
     SQLModel.metadata.create_all(engine)
     yield engine
     SQLModel.metadata.drop_all(engine)
@@ -48,6 +55,11 @@ def client_fixture(engine):
             yield session
 
     app.dependency_overrides[get_session] = get_test_session
+    # Disable rate limiters in tests to prevent cross-test interference
+    limiter.enabled = False
+    auth_limiter.enabled = False
     with TestClient(app) as client:
         yield client
     app.dependency_overrides.clear()
+    limiter.enabled = True
+    auth_limiter.enabled = True
