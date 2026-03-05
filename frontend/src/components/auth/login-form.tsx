@@ -30,8 +30,8 @@ export function LoginForm() {
             const data = await response.json();
             setAuth(data.user);
             router.push('/');
-        } catch (err: any) {
-            setError(err.message || 'Login failed');
+        } catch (err: unknown) {
+            setError(err instanceof Error ? err.message : 'Login failed');
         }
     };
 
@@ -79,7 +79,7 @@ export function LoginForm() {
             </form>
 
             <p className="mt-6 text-center text-sm text-gray-500">
-                Don't have an account?{' '}
+                Don&apos;t have an account?{' '}
                 <Link href="/register" className="text-blue-600 hover:underline">
                     Create one
                 </Link>

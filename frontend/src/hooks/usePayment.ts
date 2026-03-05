@@ -99,7 +99,7 @@ class PaymentAPI {
 
       return response;
     } catch (error) {
-      this.showNotification('Failed to send tip: ' + error.message, 'error');
+      this.showNotification('Failed to send tip: ' + (error instanceof Error ? error.message : 'Unknown error'), 'error');
       throw error;
     }
   }
@@ -125,7 +125,7 @@ class PaymentAPI {
     }
   }
 
-  async requestPayout(): Promise<any> {
+  async requestPayout(): Promise<{ success: boolean; message?: string }> {
     try {
       const response = await this.request('/payments/payouts/request');
       
@@ -135,7 +135,7 @@ class PaymentAPI {
 
       return response;
     } catch (error) {
-      this.showNotification('Failed to request payout: ' + error.message, 'error');
+      this.showNotification('Failed to request payout: ' + (error instanceof Error ? error.message : 'Unknown error'), 'error');
       throw error;
     }
   }
@@ -152,12 +152,12 @@ class PaymentAPI {
   }
 
   // Stripe Connect setup
-  async setupStripeConnect(returnUrl: string): Promise<any> {
+  async setupStripeConnect(returnUrl: string): Promise<{ success: boolean; onboarding_url?: string }> {
     try {
       const response = await this.request('/payments/wallet/setup-connect', {
         method: 'POST',
         body: JSON.stringify({
-          return_url,
+          return_url: returnUrl,
           refresh_url: `${window.location.origin}/settings/payouts`,
         }),
       });
@@ -169,7 +169,7 @@ class PaymentAPI {
 
       return response;
     } catch (error) {
-      this.showNotification('Failed to setup Stripe Connect: ' + error.message, 'error');
+      this.showNotification('Failed to setup Stripe Connect: ' + (error instanceof Error ? error.message : 'Unknown error'), 'error');
       throw error;
     }
   }

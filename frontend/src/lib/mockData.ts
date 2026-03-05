@@ -1,4 +1,13 @@
 // Mock data for development
+import { useState } from 'react';
+
+interface TipRequest {
+  creator_id: string;
+  amount: number;
+  video_id?: string;
+  message?: string;
+}
+
 export const paymentAPI = {
   // Override API methods for development
   sendTip: async (request: TipRequest) => {
@@ -145,11 +154,14 @@ export const useAuth = () => {
     if (process.env.NODE_ENV === 'development') console.log('Login attempt');
     // Mock successful login for demo user
     if (email === 'creator@clipsmith.com' && password === 'demo') {
-      return { user: user[1], token: 'mock_dev_token' };
+      return { user, token: 'mock_dev_token' };
     }
-    
+
     return null;
   };
+
+  return { user, login };
+};
 
 // Mock video data
 export const mockVideos = [
@@ -194,4 +206,3 @@ export const mockVideos = [
   },
 ];
 
-export { mockVideos, paymentAPI, analyticsAPI, useAuth };

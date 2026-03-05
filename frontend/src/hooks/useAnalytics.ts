@@ -53,7 +53,7 @@ class AnalyticsAPI {
       return response.time_series;
     } catch (error) {
       console.error('Failed to fetch time series data:', error);
-      return { data_points: [] };
+      return { metric: '', time_period: '', data_points: [] };
     }
   }
 

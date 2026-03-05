@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import Image from 'next/image';
 import { apiClient } from '@/lib/api/client';
-import { Search, Filter, Star, Sparkles, Grid, List } from 'lucide-react';
+import { Search, Star, Sparkles, Grid, List } from 'lucide-react';
 
 interface AITemplate {
   id: string;
@@ -28,17 +29,13 @@ export function TemplateBrowser() {
   const [style, setStyle] = useState('all');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
-  useEffect(() => {
-    loadTemplates();
-  }, [category, style]);
-
-  const loadTemplates = async () => {
+  const loadTemplates = useCallback(async () => {
     setIsLoading(true);
     try {
       const params = new URLSearchParams();
       if (category !== 'all') params.append('category', category);
       if (style !== 'all') params.append('style', style);
-      
+
       const data = await apiClient<{ templates: AITemplate[] }>(
         `/api/ai/templates?${params.toString()}`
       );
@@ -48,7 +45,11 @@ export function TemplateBrowser() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [category, style]);
+
+  useEffect(() => {
+    loadTemplates();
+  }, [loadTemplates]);
 
   const filteredTemplates = templates.filter(t =>
     t.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -127,7 +128,7 @@ export function TemplateBrowser() {
               }`}
             >
               {template.thumbnail_url ? (
-                <img src={template.thumbnail_url} alt={template.name} className={viewMode === 'grid' ? 'w-full h-32 object-cover' : 'w-32 h-24 object-cover'} />
+                <Image src={template.thumbnail_url} alt={template.name} width={viewMode === 'grid' ? 300 : 128} height={viewMode === 'grid' ? 128 : 96} className={viewMode === 'grid' ? 'w-full h-32 object-cover' : 'w-32 h-24 object-cover'} />
               ) : (
                 <div className={`bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center ${viewMode === 'grid' ? 'w-full h-32' : 'w-32 h-24'}`}>
                   <Sparkles className="text-white/50" size={24} />

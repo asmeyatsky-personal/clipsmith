@@ -12,6 +12,7 @@ interface Video {
   url: string;
   thumbnail_url: string;
   creator_id: string;
+  status: string;
   views: number;
   likes: number;
   duration: number;

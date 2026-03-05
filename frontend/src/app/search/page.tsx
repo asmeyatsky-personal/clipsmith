@@ -20,6 +20,7 @@ function SearchResults() {
 
     useEffect(() => {
         if (query) {
+            // eslint-disable-next-line react-hooks/set-state-in-effect
             setLoading(true);
             setPage(1);
             videoService.search(query, 1, 12)
@@ -63,7 +64,7 @@ function SearchResults() {
         <div>
             <div className="mb-8">
                 <h1 className="text-3xl font-bold mb-2">
-                    Search results for "{query}"
+                    Search results for &quot;{query}&quot;
                 </h1>
                 <p className="text-zinc-500">
                     {total} video{total !== 1 ? 's' : ''} found

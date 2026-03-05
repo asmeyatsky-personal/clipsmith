@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Image from 'next/image';
 import { sanitizeForReact } from '@/lib/utils/sanitize';
 import { apiClient } from '@/lib/api/client';
 
@@ -147,10 +148,11 @@ export function ProjectGallery({ onProjectSelect, onCreateNew }: ProjectGalleryP
                                 onClick={() => onProjectSelect(project.id)}
                             >
                                 {project.thumbnail_url ? (
-                                    <img
+                                    <Image
                                         src={project.thumbnail_url}
                                         alt={project.title}
-                                        className="w-full h-full object-cover"
+                                        fill
+                                        className="object-cover"
                                     />
                                 ) : (
                                     <div className="flex items-center justify-center h-full">

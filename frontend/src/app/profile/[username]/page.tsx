@@ -24,8 +24,8 @@ export default function ProfilePage() {
                 setLoading(true);
                 const data = await userService.getProfile(username);
                 setProfile(data);
-            } catch (err: any) {
-                setError(err.message || 'Failed to load profile');
+            } catch (err: unknown) {
+                setError(err instanceof Error ? err.message : 'Failed to load profile');
             } finally {
                 setLoading(false);
             }

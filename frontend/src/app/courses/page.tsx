@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { GraduationCap, Star, Users, Filter, BookOpen, Clock, CheckCircle, Loader2, AlertCircle, LogIn } from 'lucide-react';
+import { GraduationCap, Star, Users, Filter, BookOpen, Clock, CheckCircle, Loader2, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { courseService, Course as APICourse, EnrolledCourse } from '@/lib/api/courses';
@@ -25,7 +25,7 @@ interface Course {
 const courseCategories = ['all', 'editing', 'cinematography', 'storytelling', 'effects', 'audio', 'color', 'business', 'social-media', 'general'];
 
 export default function CoursesPage() {
-  const { user, isAuthenticated } = useAuthStore();
+  const { isAuthenticated } = useAuthStore();
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [courses, setCourses] = useState<Course[]>([]);
   const [loadingCourses, setLoadingCourses] = useState(true);

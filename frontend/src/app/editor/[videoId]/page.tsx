@@ -39,8 +39,8 @@ export default function EditorPage() {
                 // Also fetch captions
                 const captionData = await videoService.getCaptions(videoId);
                 setCaptions(captionData);
-            } catch (err: any) {
-                setError(err.message || 'Failed to load video');
+            } catch (err: unknown) {
+                setError(err instanceof Error ? err.message : 'Failed to load video');
             } finally {
                 setLoading(false);
             }
@@ -84,9 +84,9 @@ export default function EditorPage() {
             alert("Generating captions... This may take a moment.");
             await videoService.generateCaptions(videoId);
             alert("Captions generation initiated successfully!");
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error("Failed to generate captions:", err);
-            alert(`Failed to generate captions: ${err.message || 'Unknown error'}`);
+            alert(`Failed to generate captions: ${err instanceof Error ? err.message : 'Unknown error'}`);
         }
     };
 

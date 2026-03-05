@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import Image from 'next/image';
 import { apiClient } from '@/lib/api/client';
-import { 
-  Sparkles, Video, MessageSquare, Voice, 
-  Loader2, Check, X, Play, Image, Wand2
+import {
+  Sparkles, Video, MessageSquare, Mic,
+  Loader2, Check, X, Wand2
 } from 'lucide-react';
 
 interface AITemplate {
@@ -54,28 +55,29 @@ export function AIToolsPanel({ projectId }: { projectId?: string }) {
   const [selectedVoice, setSelectedVoice] = useState('default');
   const [voiceSpeed, setVoiceSpeed] = useState(1.0);
 
-  useEffect(() => {
-    loadVoices();
-    loadTemplates();
-  }, []);
-
-  const loadVoices = async () => {
+  const loadVoices = useCallback(async () => {
     try {
       const data = await apiClient<{ voices: AIVoice[] }>('/api/ai/voices');
       setVoices(data.voices);
     } catch (e) {
       console.error('Error loading voices:', e);
     }
-  };
+  }, []);
 
-  const loadTemplates = async () => {
+  const loadTemplates = useCallback(async () => {
     try {
       const data = await apiClient<{ templates: AITemplate[] }>('/api/ai/templates?limit=20');
       setTemplates(data.templates);
     } catch (e) {
       console.error('Error loading templates:', e);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    loadVoices();
+    loadTemplates();
+  }, [loadVoices, loadTemplates]);
 
   const generateCaptions = async () => {
     if (!projectId) return;
@@ -151,7 +153,7 @@ export function AIToolsPanel({ projectId }: { projectId?: string }) {
     }
   };
 
-  const useTemplate = async (templateId: string) => {
+  const applyTemplate = async (templateId: string) => {
     try {
       const result = await apiClient<{ project_id: string }>(`/api/ai/templates/${templateId}/use`, {
         method: 'POST',
@@ -167,7 +169,7 @@ export function AIToolsPanel({ projectId }: { projectId?: string }) {
     { id: 'captions', label: 'Captions', icon: MessageSquare },
     { id: 'templates', label: 'Templates', icon: Sparkles },
     { id: 'video', label: 'AI Video', icon: Video },
-    { id: 'voiceover', label: 'Voice Over', icon: Voice },
+    { id: 'voiceover', label: 'Voice Over', icon: Mic },
   ] as const;
 
   return (
@@ -293,10 +295,10 @@ export function AIToolsPanel({ projectId }: { projectId?: string }) {
                 <div
                   key={template.id}
                   className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden hover:border-blue-500 transition-colors cursor-pointer"
-                  onClick={() => useTemplate(template.id)}
+                  onClick={() => { applyTemplate(template.id); }}
                 >
                   {template.thumbnail_url ? (
-                    <img src={template.thumbnail_url} alt={template.name} className="w-full h-24 object-cover" />
+                    <Image src={template.thumbnail_url} alt={template.name} width={200} height={96} className="w-full h-24 object-cover" />
                   ) : (
                     <div className="w-full h-24 bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
                       <Sparkles className="text-gray-400" />
@@ -407,7 +409,7 @@ export function AIToolsPanel({ projectId }: { projectId?: string }) {
               disabled={!projectId || !voiceText || isLoading}
               className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50"
             >
-              {isLoading ? <Loader2 className="animate-spin" size={16} /> : <Voice size={16} />}
+              {isLoading ? <Loader2 className="animate-spin" size={16} /> : <Mic size={16} />}
               Generate Voice Over
             </button>
           </div>

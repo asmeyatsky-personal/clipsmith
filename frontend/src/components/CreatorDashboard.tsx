@@ -27,7 +27,8 @@ interface DashboardProps {
 
 const CreatorDashboard: React.FC<DashboardProps> = ({ className = '' }) => {
   const { wallet, transactions, analytics, loading, error, refreshData } = usePayment();
-  const { views, timeSeriesData, trackEvent } = useAnalytics();
+  const { videoViews: views, timeSeriesData } = useAnalytics();
+  const trackEvent = (_event: string, _data?: Record<string, unknown>) => { /* no-op */ };
   const [timeRange, setTimeRange] = useState<'7d' | '30d' | '90d'>('30d');
   const [selectedMetric, setSelectedMetric] = useState<'revenue' | 'views' | 'engagement'>('revenue');
 
@@ -312,128 +313,6 @@ const CreatorDashboard: React.FC<DashboardProps> = ({ className = '' }) => {
               </CardContent>
             </Card>
           </div>
-              
-              <div className="grid grid-cols-2 gap-4">
-                <div className="text-center p-4 bg-blue-50 dark:bg-blue-900 rounded-lg">
-                  <div className="text-3xl font-bold text-blue-600 dark:text-blue-400">
-                    ${analytics?.total_views.toLocaleString() || '0'}
-                  </div>
-                  <div className="text-sm text-gray-600 dark:text-gray-300">
-                    Total Views
-                  </div>
-                </div>
-                
-                <div className="text-center p-4 bg-green-50 dark:bg-green-900 rounded-lg">
-                  <div className="text-3xl font-bold text-green-600 dark:text-green-400">
-                    ${analytics?.total_likes.toLocaleString() || '0'}
-                  </div>
-                  <div className="text-sm text-gray-600 dark:text-gray-300">
-                    Total Likes
-                  </div>
-                </div>
-                
-                <div className="text-center p-4 bg-purple-50 dark:bg-purple-900 rounded-lg">
-                  <div className="text-3xl font-bold text-purple-600 dark:text-purple-400">
-                    ${analytics?.total_comments.toLocaleString() || '0'}
-                  </div>
-                  <div className="text-sm text-gray-600 dark:text-gray-300">
-                    Total Comments
-                  </div>
-                </div>
-              </div>
-              
-              <div className="mt-6">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-500 dark:text-gray-400">
-                    Current Balance
-                  </span>
-                  <button
-                    onClick={refreshData}
-                    className="px-3 py-1 text-sm bg-gray-200 dark:bg-gray-700 rounded hover:bg-gray-300 dark:hover:bg-gray-600"
-                  >
-                    Refresh
-                  </button>
-                </div>
-                
-                {wallet && (
-                  <div className="space-y-4">
-                    <div className="flex justify-between items-center">
-                      <span className="text-lg font-semibold">
-                        ${wallet.balance > 0 ? '$' : ''}
-                        {wallet.balance.toFixed(2)}
-                      </span>
-                      <span className={`text-sm px-2 py-1 rounded ${
-                        wallet.status === 'active' 
-                          ? 'bg-green-100 text-green-800' 
-                          : wallet.status === 'frozen' 
-                          ? 'bg-red-100 text-red-800' 
-                          : 'bg-yellow-100 text-yellow-800'
-                      }`}>
-                        {wallet.status}
-                      </span>
-                    </div>
-                    
-                    {wallet.pending_balance > 0 && (
-                      <div className="text-sm text-yellow-600 dark:text-yellow-400">
-                        +${wallet.pending_balance.toFixed(2)} pending
-                      </div>
-                    )}
-                    
-                    <div className="flex space-x-4 mt-2">
-                      <button
-                        onClick={() => {/* Request payout logic */}}
-                        className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600"
-                        disabled={wallet.balance < 10}
-                      >
-                        Request Payout
-                      </button>
-                      
-                      {wallet.stripe_account_id && (
-                        <button
-                          onClick={async () => {
-                            await setupStripeConnect();
-                          }}
-                          className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-                        >
-                          Configure Payouts
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Revenue Card */}
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
-              <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Revenue</h2>
-              
-              <div className="space-y-4">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-500">Total Revenue</span>
-                  <span className="text-lg font-bold text-green-600">
-                    ${analytics?.total_revenue > 0 ? '$' : ''}
-                    {analytics?.total_revenue.toFixed(2)}
-                  </span>
-                </div>
-                
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-500">Total Tips</span>
-                  <span className="text-lg font-bold text-blue-600">
-                    ${analytics?.total_tips > 0 ? '$' : ''}
-                    {analytics?.total_tips.toFixed(2)}
-                  </span>
-                </div>
-                
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-500">Subscriptions</span>
-                  <span className="text-lg font-bold text-purple-600">
-                    {analytics?.total_subscriptions > 0 ? analytics.total_subscriptions : 0}
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
 
           {/* Sidebar */}
           <div className="space-y-4 sm:space-y-6">
@@ -598,8 +477,6 @@ const CreatorDashboard: React.FC<DashboardProps> = ({ className = '' }) => {
             )}
           </CardContent>
         </Card>
-      </div>
-    </div>
       </div>
     </div>
   );

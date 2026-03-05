@@ -60,7 +60,7 @@ export function CreatorMonetizationDashboard() {
       
       setWallet(walletData.wallet);
       setTransactions(transData.transactions || []);
-      setSubscriptions(subscriptions.subscriptions || []);
+      setSubscriptions(subData.subscriptions || []);
       setAnalytics(analyticsData.analytics);
     } catch (e) {
       console.error('Error loading monetization data:', e);

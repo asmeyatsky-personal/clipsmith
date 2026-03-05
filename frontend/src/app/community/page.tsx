@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Users, Calendar, Circle, UserPlus, MapPin, Clock, Loader2, AlertCircle, LogIn } from 'lucide-react';
+import { Users, Circle, UserPlus, MapPin, Clock, Loader2, AlertCircle, LogIn } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
@@ -35,7 +35,7 @@ interface CreatorCircle {
 }
 
 export default function CommunityPage() {
-  const { user, isAuthenticated } = useAuthStore();
+  const { isAuthenticated } = useAuthStore();
   const [groups, setGroups] = useState<Group[]>([]);
   const [events, setEvents] = useState<Event[]>([]);
   const [circles, setCircles] = useState<CreatorCircle[]>([]);

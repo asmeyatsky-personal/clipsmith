@@ -19,8 +19,8 @@ export function RegisterForm() {
                 credentials: 'include',
             });
             router.push('/login');
-        } catch (err: any) {
-            setError(err.message || 'Registration failed');
+        } catch (err: unknown) {
+            setError(err instanceof Error ? err.message : 'Registration failed');
         }
     };
 

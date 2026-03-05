@@ -38,8 +38,8 @@ export function TipModal({ creatorId, videoId, isOpen, onClose }: TipModalProps)
             await videoService.sendTip(videoId, creatorId, amount as number); // Assuming sendTip function
             alert(`Successfully sent $${amount} tip!`);
             onClose();
-        } catch (err: any) {
-            setError(err.message || "Failed to send tip.");
+        } catch (err: unknown) {
+            setError(err instanceof Error ? err.message : "Failed to send tip.");
         } finally {
             setLoading(false);
         }

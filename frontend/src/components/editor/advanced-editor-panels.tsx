@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { apiClient } from '@/lib/api/client';
-import { 
-  Sliders, Volume2, Sparkles, Key, Palette, 
-  ChevronDown, ChevronUp, Play, Pause
+import {
+  Volume2, Sparkles, Key, Palette,
+  ChevronDown, ChevronUp
 } from 'lucide-react';
 
 interface ColorGradeSettings {
@@ -112,6 +112,30 @@ function EffectsCategorized({ addEffect }: { addEffect: (effectType: string) => 
   );
 }
 
+function SliderControl({ label, value, min, max, onChange, onCommit }: {
+  label: string; value: number; min: number; max: number;
+  onChange: (v: number) => void; onCommit: () => void
+}) {
+  return (
+    <div className="space-y-1">
+      <div className="flex justify-between text-xs">
+        <span className="text-gray-500">{label}</span>
+        <span className="text-gray-700 dark:text-gray-300">{value}</span>
+      </div>
+      <input
+        type="range"
+        min={min}
+        max={max}
+        value={value}
+        onChange={(e) => onChange(parseFloat(e.target.value))}
+        onMouseUp={onCommit}
+        onTouchEnd={onCommit}
+        className="w-full h-1 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer"
+      />
+    </div>
+  );
+}
+
 export function AdvancedEditorPanels({ projectId, trackId }: AdvancedEditorPanelsProps) {
   const [activePanel, setActivePanel] = useState<string | null>(null);
   const [colorGrade, setColorGrade] = useState<ColorGradeSettings>({
@@ -132,24 +156,14 @@ export function AdvancedEditorPanels({ projectId, trackId }: AdvancedEditorPanel
   const [keyframes, setKeyframes] = useState<Keyframe[]>([]);
   const [effects, setEffects] = useState<Effect[]>([]);
 
-  useEffect(() => {
-    if (trackId && projectId) {
-      loadColorGrade();
-      loadAudioMix();
-      loadChromaKey();
-      loadKeyframes();
-      loadEffects();
-    }
-  }, [trackId, projectId]);
-
-  const loadColorGrade = async () => {
+  const loadColorGrade = useCallback(async () => {
     try {
       const data = await apiClient<ColorGradeSettings>(
         `/api/editor/projects/${projectId}/tracks/${trackId}/color-grade`
       );
       setColorGrade(data);
     } catch (e) { console.error('Error loading color grade:', e); }
-  };
+  }, [projectId, trackId]);
 
   const saveColorGrade = async () => {
     try {
@@ -160,14 +174,14 @@ export function AdvancedEditorPanels({ projectId, trackId }: AdvancedEditorPanel
     } catch (e) { console.error('Error saving color grade:', e); }
   };
 
-  const loadAudioMix = async () => {
+  const loadAudioMix = useCallback(async () => {
     try {
       const data = await apiClient<AudioMixSettings>(
         `/api/editor/projects/${projectId}/tracks/${trackId}/audio-mix`
       );
       setAudioMix(data);
     } catch (e) { console.error('Error loading audio mix:', e); }
-  };
+  }, [projectId, trackId]);
 
   const saveAudioMix = async () => {
     try {
@@ -178,14 +192,14 @@ export function AdvancedEditorPanels({ projectId, trackId }: AdvancedEditorPanel
     } catch (e) { console.error('Error saving audio mix:', e); }
   };
 
-  const loadChromaKey = async () => {
+  const loadChromaKey = useCallback(async () => {
     try {
       const data = await apiClient<ChromaKeySettings>(
         `/api/editor/projects/${projectId}/tracks/${trackId}/chroma-key`
       );
       setChromaKey(data);
     } catch (e) { console.error('Error loading chroma key:', e); }
-  };
+  }, [projectId, trackId]);
 
   const saveChromaKey = async () => {
     try {
@@ -196,23 +210,34 @@ export function AdvancedEditorPanels({ projectId, trackId }: AdvancedEditorPanel
     } catch (e) { console.error('Error saving chroma key:', e); }
   };
 
-  const loadKeyframes = async () => {
+  const loadKeyframes = useCallback(async () => {
     try {
       const data = await apiClient<{ keyframes: Keyframe[] }>(
         `/api/editor/projects/${projectId}/tracks/${trackId}/keyframes`
       );
       setKeyframes(data.keyframes || []);
     } catch (e) { console.error('Error loading keyframes:', e); }
-  };
+  }, [projectId, trackId]);
 
-  const loadEffects = async () => {
+  const loadEffects = useCallback(async () => {
     try {
       const data = await apiClient<{ effects: Effect[] }>(
         `/api/editor/projects/${projectId}/tracks/${trackId}/effects`
       );
       setEffects(data.effects || []);
     } catch (e) { console.error('Error loading effects:', e); }
-  };
+  }, [projectId, trackId]);
+
+  useEffect(() => {
+    if (trackId && projectId) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      loadColorGrade();
+      loadAudioMix();
+      loadChromaKey();
+      loadKeyframes();
+      loadEffects();
+    }
+  }, [trackId, projectId, loadColorGrade, loadAudioMix, loadChromaKey, loadKeyframes, loadEffects]);
 
   const addKeyframe = async (property: string, time: number, value: number) => {
     try {
@@ -239,31 +264,7 @@ export function AdvancedEditorPanels({ projectId, trackId }: AdvancedEditorPanel
     } catch (e) { console.error('Error adding effect:', e); }
   };
 
-  const SliderControl = ({ label, value, min, max, onChange, onCommit }: {
-    label: string; value: number; min: number; max: number;
-    onChange: (v: number) => void; onCommit: () => void
-  }) => (
-    <div className="space-y-1">
-      <div className="flex justify-between text-xs">
-        <span className="text-gray-500">{label}</span>
-        <span className="text-gray-700 dark:text-gray-300">{value}</span>
-      </div>
-      <input
-        type="range"
-        min={min}
-        max={max}
-        value={value}
-        onChange={(e) => onChange(parseFloat(e.target.value))}
-        onMouseUp={onCommit}
-        onTouchEnd={onCommit}
-        className="w-full h-1 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer"
-      />
-    </div>
-  );
-
-  const Panel = ({ id, title, icon: Icon, children }: {
-    id: string; title: string; icon: React.ElementType; children: React.ReactNode
-  }) => (
+  const renderPanel = (id: string, title: string, Icon: React.ElementType, children: React.ReactNode) => (
     <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
       <button
         onClick={() => setActivePanel(activePanel === id ? null : id)}
@@ -285,7 +286,7 @@ export function AdvancedEditorPanels({ projectId, trackId }: AdvancedEditorPanel
 
   return (
     <div className="space-y-2">
-      <Panel id="color" title="Color Grading" icon={Palette}>
+      {renderPanel("color", "Color Grading", Palette, <>
         <SliderControl
           label="Brightness" value={colorGrade.brightness} min={-100} max={100}
           onChange={(v) => setColorGrade({ ...colorGrade, brightness: v })}
@@ -316,9 +317,9 @@ export function AdvancedEditorPanels({ projectId, trackId }: AdvancedEditorPanel
           onChange={(v) => setColorGrade({ ...colorGrade, shadows: v })}
           onCommit={saveColorGrade}
         />
-      </Panel>
+      </>)}
 
-      <Panel id="audio" title="Audio Mixing" icon={Volume2}>
+      {renderPanel("audio", "Audio Mixing", Volume2, <>
         <SliderControl
           label="Volume" value={audioMix.volume} min={0} max={2}
           onChange={(v) => setAudioMix({ ...audioMix, volume: v })}
@@ -359,9 +360,9 @@ export function AdvancedEditorPanels({ projectId, trackId }: AdvancedEditorPanel
             Duck
           </button>
         </div>
-      </Panel>
+      </>)}
 
-      <Panel id="chroma" title="Chroma Key" icon={Key}>
+      {renderPanel("chroma", "Chroma Key", Key, <>
         <div className="flex items-center justify-between">
           <span className="text-sm">Enable Chroma Key</span>
           <input
@@ -415,9 +416,9 @@ export function AdvancedEditorPanels({ projectId, trackId }: AdvancedEditorPanel
             </div>
           </>
         )}
-      </Panel>
+      </>)}
 
-      <Panel id="keyframes" title="Keyframes" icon={Key}>
+      {renderPanel("keyframes", "Keyframes", Key, <>
         <div className="space-y-2">
           <div className="flex gap-2">
             <select id="kf-property" className="flex-1 px-2 py-1 text-sm border rounded">
@@ -449,9 +450,9 @@ export function AdvancedEditorPanels({ projectId, trackId }: AdvancedEditorPanel
             <p className="text-xs text-gray-500">No keyframes added yet</p>
           )}
         </div>
-      </Panel>
+      </>)}
 
-      <Panel id="effects" title="Effects" icon={Sparkles}>
+      {renderPanel("effects", "Effects", Sparkles, <>
         <EffectsCategorized addEffect={addEffect} />
         {effects.length > 0 && (
           <div className="space-y-1 mt-2 max-h-32 overflow-y-auto">
@@ -465,7 +466,7 @@ export function AdvancedEditorPanels({ projectId, trackId }: AdvancedEditorPanel
             ))}
           </div>
         )}
-      </Panel>
+      </>)}
     </div>
   );
 }

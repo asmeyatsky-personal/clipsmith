@@ -23,8 +23,8 @@ export default function ForgotPasswordPage() {
         try {
             await authService.requestPasswordReset(email);
             setSubmitted(true);
-        } catch (err: any) {
-            setError(err.message || 'Failed to request password reset');
+        } catch (err: unknown) {
+            setError(err instanceof Error ? err.message : 'Failed to request password reset');
         } finally {
             setLoading(false);
         }
@@ -45,7 +45,7 @@ export default function ForgotPasswordPage() {
                             </div>
                             <h2 className="text-2xl font-bold mb-2">Check your email</h2>
                             <p className="text-zinc-500 dark:text-zinc-400 mb-6">
-                                If an account exists for {email}, you'll receive a password reset link shortly.
+                                If an account exists for {email}, you&apos;ll receive a password reset link shortly.
                             </p>
                             <Link href="/login">
                                 <Button variant="outline" className="rounded-full">
@@ -74,7 +74,7 @@ export default function ForgotPasswordPage() {
                         </div>
                         <CardTitle className="text-2xl">Forgot Password?</CardTitle>
                         <CardDescription>
-                            Enter your email address and we'll send you a reset link.
+                            Enter your email address and we&apos;ll send you a reset link.
                         </CardDescription>
                     </CardHeader>
                     <CardContent>

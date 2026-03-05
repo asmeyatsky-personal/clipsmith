@@ -16,7 +16,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { VideoResponseDTO } from '@/lib/types';
 
 export function UploadModal({ onUploadSuccess }: { onUploadSuccess?: () => void }) {
-    const { token } = useAuthStore();
+    const { user } = useAuthStore();
     const [isOpen, setIsOpen] = useState(false);
     const [file, setFile] = useState<File | null>(null);
     const [title, setTitle] = useState('');
@@ -50,13 +50,11 @@ export function UploadModal({ onUploadSuccess }: { onUploadSuccess?: () => void 
     useEffect(() => {
         let pollInterval: NodeJS.Timeout;
 
-        if ((processingStatus === 'processing' || processingStatus === 'polling') && videoId && token) {
+        if ((processingStatus === 'processing' || processingStatus === 'polling') && videoId && user) {
             pollInterval = setInterval(async () => {
                 try {
                     const response = await fetch(`${getBaseUrl()}/videos/${videoId}`, {
-                        headers: {
-                            'Authorization': `Bearer ${token}`
-                        }
+                        credentials: 'include',
                     });
 
                     if (!response.ok) {
@@ -78,8 +76,8 @@ export function UploadModal({ onUploadSuccess }: { onUploadSuccess?: () => void 
                     } else {
                         setProcessingStatus('polling'); // Keep polling
                     }
-                } catch (err: any) {
-                    setError(err.message || 'Error checking video status');
+                } catch (err: unknown) {
+                    setError(err instanceof Error ? err.message : 'Error checking video status');
                     setProcessingStatus('failed');
                     clearInterval(pollInterval);
                 }
@@ -87,7 +85,7 @@ export function UploadModal({ onUploadSuccess }: { onUploadSuccess?: () => void 
         }
 
         return () => clearInterval(pollInterval); // Cleanup on unmount or status change
-    }, [videoId, processingStatus, token, onUploadSuccess]);
+    }, [videoId, processingStatus, user, onUploadSuccess]);
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
@@ -111,9 +109,7 @@ export function UploadModal({ onUploadSuccess }: { onUploadSuccess?: () => void 
         try {
             const response = await fetch(`${getBaseUrl()}/videos/`, {
                 method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                },
+                credentials: 'include',
                 body: formData
             });
 
@@ -128,15 +124,15 @@ export function UploadModal({ onUploadSuccess }: { onUploadSuccess?: () => void 
             setProcessedVideoData(data); // Initial data from upload response
 
             // Do not close modal or call onUploadSuccess here, wait for processing to complete
-        } catch (err: any) {
-            setError(err.message || 'Upload failed');
+        } catch (err: unknown) {
+            setError(err instanceof Error ? err.message : 'Upload failed');
             setProcessingStatus('failed');
         } finally {
             setUploading(false);
         }
     };
 
-    if (!token) return null;
+    if (!user) return null;
 
     return (
         <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -236,7 +232,7 @@ export function UploadModal({ onUploadSuccess }: { onUploadSuccess?: () => void 
                                 <div className="flex flex-col items-center gap-4">
                                     <Loader2 className="w-12 h-12 text-blue-500 animate-spin" />
                                     <p className="text-lg font-bold text-zinc-700 dark:text-zinc-300">Processing your video...</p>
-                                    <p className="text-sm text-zinc-500 dark:text-zinc-400">This might take a moment. We'll notify you when it's ready!</p>
+                                    <p className="text-sm text-zinc-500 dark:text-zinc-400">This might take a moment. We&apos;ll notify you when it&apos;s ready!</p>
                                 </div>
                             ) : processingStatus === 'ready' ? (
                                 <div className="flex flex-col items-center gap-4">
