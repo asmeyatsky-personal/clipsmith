@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field, replace
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import Optional, Dict, Any
 from enum import Enum
 import uuid
@@ -41,7 +41,7 @@ class VideoProject:
     status: VideoProjectStatus = VideoProjectStatus.DRAFT
     thumbnail_url: Optional[str] = None  # Generated thumbnail of project
     duration: float = 0.0  # Project duration in seconds
-    created_at: datetime = field(default_factory=datetime.utcnow)
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     updated_at: Optional[datetime] = None
     published_at: Optional[datetime] = None
     settings: Optional[Dict[str, Any]] = None  # Editor settings (zoom, quality, etc.)
@@ -51,34 +51,34 @@ class VideoProject:
     def add_video(self, video_id: str) -> "VideoProject":
         """Add video to project."""
         # This would update project metadata like video count, total duration
-        return replace(self, updated_at=datetime.utcnow())
+        return replace(self, updated_at=datetime.now(UTC))
 
     def remove_video(self, video_id: str) -> "VideoProject":
         """Remove video from project."""
-        return replace(self, updated_at=datetime.utcnow())
+        return replace(self, updated_at=datetime.now(UTC))
 
     def update_thumbnail(self, thumbnail_url: str) -> "VideoProject":
         """Update project thumbnail."""
-        return replace(self, thumbnail_url=thumbnail_url, updated_at=datetime.utcnow())
+        return replace(self, thumbnail_url=thumbnail_url, updated_at=datetime.now(UTC))
 
     def update_settings(self, **kwargs) -> "VideoProject":
         """Update editor settings."""
         return replace(
             self,
             settings={**(self.settings or {}), **kwargs},
-            updated_at=datetime.utcnow(),
+            updated_at=datetime.now(UTC),
         )
 
     def set_permission(self, permission: VideoProjectPermission) -> "VideoProject":
         """Update project permission."""
-        return replace(self, permission=permission, updated_at=datetime.utcnow())
+        return replace(self, permission=permission, updated_at=datetime.now(UTC))
 
     def publish(self) -> "VideoProject":
         """Publish project as completed video."""
         return replace(
             self,
             status=VideoProjectStatus.PUBLISHED,
-            published_at=datetime.utcnow(),
+            published_at=datetime.now(UTC),
             permission=VideoProjectPermission.PUBLIC,
         )
 
@@ -88,7 +88,7 @@ class VideoProject:
             self,
             status=VideoProjectStatus.ARCHIVED,
             permission=VideoProjectPermission.PRIVATE,
-            updated_at=datetime.utcnow(),
+            updated_at=datetime.now(UTC),
         )
 
 
@@ -102,7 +102,7 @@ class VideoEditorAsset:
     storage_url: Optional[str] = None  # Cloud storage URL
     metadata: Optional[Dict[str, Any]] = None
     duration: Optional[float] = None  # Duration for audio/video assets
-    created_at: datetime = field(default_factory=datetime.utcnow)
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
     def set_storage_url(self, storage_url: str) -> "VideoEditorAsset":
         """Set cloud storage URL."""
@@ -117,7 +117,7 @@ class VideoEditorEffect:
     parameters: Optional[Dict[str, Any]] = None  # Effect-specific parameters
     preview_url: Optional[str] = None  # Preview thumbnail URL
     is_premium: bool = False  # Whether this is a premium effect
-    created_at: datetime = field(default_factory=datetime.utcnow)
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
 
 class VideoEditorTransition:

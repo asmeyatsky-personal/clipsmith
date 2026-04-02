@@ -10,7 +10,7 @@ from ...infrastructure.repositories.database import get_session
 from .auth_router import get_current_user
 from ...domain.entities.payment import TransactionType, Transaction
 from sqlmodel import Session, select
-from datetime import datetime
+from datetime import datetime, UTC
 import json
 
 logger = logging.getLogger(__name__)
@@ -564,7 +564,7 @@ async def _handle_subscription_updated(event: dict, service: PaymentService):
 
     # Handle cancellation
     if new_status == "canceled" and not updated.cancelled_at:
-        updated = updated.replace(cancelled_at=datetime.utcnow())
+        updated = updated.replace(cancelled_at=datetime.now(UTC))
 
     service.repository.save_subscription(updated)
 
@@ -587,9 +587,9 @@ async def _handle_subscription_deleted(event: dict, service: PaymentService):
         return
 
     updated_subscription = db_subscription.replace(status="cancelled")
-    updated_subscription = updated_subscription.replace(ended_at=datetime.utcnow())
+    updated_subscription = updated_subscription.replace(ended_at=datetime.now(UTC))
     if not updated_subscription.cancelled_at:
-        updated_subscription = updated_subscription.replace(cancelled_at=datetime.utcnow())
+        updated_subscription = updated_subscription.replace(cancelled_at=datetime.now(UTC))
 
     service.repository.save_subscription(updated_subscription)
     logger.info(f"Subscription {stripe_subscription_id} marked as cancelled")

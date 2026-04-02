@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field, replace
-from datetime import datetime
+from datetime import datetime, UTC
 from enum import Enum
 from typing import Optional, Dict, Any
 import uuid
@@ -34,11 +34,11 @@ class Notification:
         None  # Additional context (video_id, from_user, etc.)
     )
     status: NotificationStatus = NotificationStatus.UNREAD
-    created_at: datetime = field(default_factory=datetime.utcnow)
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     read_at: Optional[datetime] = None
 
     def mark_as_read(self) -> "Notification":
-        return replace(self, status=NotificationStatus.READ, read_at=datetime.utcnow())
+        return replace(self, status=NotificationStatus.READ, read_at=datetime.now(UTC))
 
     def mark_as_archived(self) -> "Notification":
         return replace(self, status=NotificationStatus.ARCHIVED)

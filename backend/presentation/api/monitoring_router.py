@@ -65,9 +65,9 @@ def get_metrics_summary(
 
     # Filter by time period
     if days > 0:
-        from datetime import datetime, timedelta
+        from datetime import datetime, timedelta, UTC
 
-        cutoff_date = datetime.utcnow() - timedelta(days=days)
+        cutoff_date = datetime.now(UTC) - timedelta(days=days)
 
         # Filter API requests by time period
         metrics["api_requests"] = [

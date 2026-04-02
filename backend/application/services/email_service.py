@@ -1,3 +1,4 @@
+import os
 import secrets
 import logging
 from typing import Optional
@@ -23,7 +24,7 @@ class EmailService:
         smtp_password: Optional[str] = None,
         smtp_use_tls: bool = True,
         from_email: Optional[str] = None,
-        from_name: str = "clipsmith"
+        from_name: str = "clipsmith",
         user_repo: UserRepositoryPort = None
     ):
         self.smtp_host = smtp_host or os.getenv("SMTP_HOST")
@@ -270,6 +271,32 @@ class EmailService:
             text_body=text_body
         )
     
+    def send_notification_email(self, user_email: str, user_name: str, subject: str, message: str) -> bool:
+        """Send a transactional notification email."""
+        html_body = f"""
+        <html>
+            <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+                <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+                    <h2 style="color: #2c3e50;">{subject}</h2>
+                    <p style="font-size: 16px;">Hello {user_name},</p>
+                    <p style="font-size: 16px;">{message}</p>
+                    <p style="font-size: 14px; color: #666; margin-top: 30px;">
+                        — The clipsmith Team
+                    </p>
+                </div>
+            </body>
+        </html>
+        """
+
+        text_body = f"{subject}\n\nHello {user_name},\n\n{message}\n\n— The clipsmith Team"
+
+        return self._send_email(
+            to_email=user_email,
+            subject=f"clipsmith — {subject}",
+            html_body=html_body,
+            text_body=text_body,
+        )
+
     def _send_email(self, to_email: str, subject: str, html_body: str, text_body: str) -> bool:
         """Send email using configured SMTP server."""
         if not self._smtp_server:

@@ -1,5 +1,5 @@
 from typing import List, Optional, Dict, Any
-from datetime import datetime
+from datetime import UTC, datetime
 
 
 class SocialService:
@@ -98,7 +98,7 @@ class SocialService:
             started_at = None
         else:
             status = "live"
-            started_at = datetime.utcnow()
+            started_at = datetime.now(UTC)
 
         stream = LiveStreamDB(
             creator_id=creator_id,
@@ -124,7 +124,7 @@ class SocialService:
             return {"success": False, "error": "Stream has already ended"}
 
         self.repository.update_live_stream_status(
-            stream_id, status="ended", ended_at=datetime.utcnow()
+            stream_id, status="ended", ended_at=datetime.now(UTC)
         )
         return {"success": True}
 
@@ -144,7 +144,7 @@ class SocialService:
             stream_id=stream_id,
             user_id=user_id,
             status="joined",
-            joined_at=datetime.utcnow(),
+            joined_at=datetime.now(UTC),
         )
         saved = self.repository.save_live_stream_guest(guest)
         return {"success": True, "guest": saved}
@@ -204,7 +204,7 @@ class SocialService:
         conversation = self.repository.get_conversation(sender_id, receiver_id)
         if conversation:
             self.repository.update_conversation_last_message(
-                conversation.id, datetime.utcnow()
+                conversation.id, datetime.now(UTC)
             )
         else:
             from ...infrastructure.repositories.models import ConversationDB
@@ -212,7 +212,7 @@ class SocialService:
             conversation = ConversationDB(
                 participant_1_id=sender_id,
                 participant_2_id=receiver_id,
-                last_message_at=datetime.utcnow(),
+                last_message_at=datetime.now(UTC),
             )
             self.repository.save_conversation(conversation)
 

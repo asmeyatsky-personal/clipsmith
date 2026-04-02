@@ -1,6 +1,6 @@
 from typing import Optional, List, Dict, Any
 from sqlmodel import Field, SQLModel, Relationship
-from datetime import datetime
+from datetime import datetime, UTC
 import uuid
 
 
@@ -168,7 +168,7 @@ class VideoProjectDB(SQLModel, table=True):
     status: str = Field(default="draft", index=True)
     thumbnail_url: Optional[str] = None
     duration: float = Field(default=0.0)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     updated_at: Optional[datetime] = None
     published_at: Optional[datetime] = None
     settings: Optional[str] = Field(default=None)  # JSON string
@@ -189,7 +189,7 @@ class VideoEditorAssetDB(SQLModel, table=True):
         default=None, sa_column_kwargs={"name": "extra_metadata"}
     )
     duration: Optional[float] = None
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 class VideoEditorTransitionDB(SQLModel, table=True):
@@ -224,7 +224,7 @@ class VideoEditorCaptionDB(SQLModel, table=True):
     style: Optional[str] = Field(default=None)  # JSON string
     is_auto_generated: bool = Field(default=False)
     language: str = Field(default="en")
-    created_at: datetime = Field(default_factory=lambda: datetime.utcnow())
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 class VideoEditorKeyframeDB(SQLModel, table=True):
@@ -237,7 +237,7 @@ class VideoEditorKeyframeDB(SQLModel, table=True):
     time: float
     value: str  # JSON value (can be number, string, or array for position)
     easing: str = Field(default="linear")
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 class VideoEditorColorGradeDB(SQLModel, table=True):
@@ -255,7 +255,7 @@ class VideoEditorColorGradeDB(SQLModel, table=True):
     shadows: float = Field(default=0.0)  # -100 to 100
     vibrance: float = Field(default=0.0)  # -100 to 100
     filters: Optional[str] = Field(default=None)  # JSON array of filter names
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     updated_at: Optional[datetime] = None
 
 
@@ -276,7 +276,7 @@ class VideoEditorAudioMixDB(SQLModel, table=True):
     )  # JSON: {"low": 0, "mid": 0, "high": 0}
     audio_effects: Optional[str] = Field(default=None)  # JSON array of effect names
     duck_others: bool = Field(default=False)  # Lower other tracks when this one plays
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     updated_at: Optional[datetime] = None
 
 
@@ -293,7 +293,7 @@ class VideoEditorChromaKeyDB(SQLModel, table=True):
     spill_suppression: float = Field(default=0.1)  # 0.0 to 1.0
     background_type: str = Field(default="none")  # none, color, image, video
     background_value: Optional[str] = None  # color hex, image URL, or video asset ID
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     updated_at: Optional[datetime] = None
 
 
@@ -308,7 +308,7 @@ class VideoEditorEffectDB(SQLModel, table=True):
     start_time: float = Field(default=0.0)
     end_time: float = Field(default=0.0)
     enabled: bool = Field(default=True)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 # AI-Powered Tools Models
@@ -325,7 +325,7 @@ class AICaptionJobDB(SQLModel, table=True):
     language: str = Field(default="en")
     result: Optional[str] = None  # JSON array of captions
     error_message: Optional[str] = None
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     completed_at: Optional[datetime] = None
 
 
@@ -345,7 +345,7 @@ class AITemplateDB(SQLModel, table=True):
     creator_id: Optional[str] = Field(index=True)
     is_public: bool = Field(default=True)
     tags: Optional[str] = None  # JSON array
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     updated_at: Optional[datetime] = None
 
 
@@ -364,7 +364,7 @@ class AIVideoGenerationDB(SQLModel, table=True):
     settings: Optional[str] = None  # JSON: resolution, fps, etc.
     result_url: Optional[str] = None
     error_message: Optional[str] = None
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     completed_at: Optional[datetime] = None
 
 
@@ -381,7 +381,7 @@ class AIVoiceOverDB(SQLModel, table=True):
     status: str = Field(default="pending", index=True)
     result_url: Optional[str] = None
     error_message: Optional[str] = None
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     completed_at: Optional[datetime] = None
 
 
@@ -397,7 +397,7 @@ class PremiumContentDB(SQLModel, table=True):
     description: Optional[str] = None
     is_active: bool = Field(default=True)
     purchase_count: int = Field(default=0)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     updated_at: Optional[datetime] = None
 
 
@@ -411,7 +411,7 @@ class PremiumPurchaseDB(SQLModel, table=True):
     currency: str = Field(default="USD")
     stripe_payment_id: Optional[str] = Field(index=True)
     status: str = Field(default="pending")  # pending, completed, refunded
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 # Brand Collaboration Models
@@ -432,7 +432,7 @@ class BrandCampaignDB(SQLModel, table=True):
     )  # pending, accepted, rejected, completed, cancelled
     payment_status: str = Field(default="unpaid")  # unpaid, paid
     stripe_payment_id: Optional[str] = Field(index=True)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     updated_at: Optional[datetime] = None
 
 
@@ -447,7 +447,7 @@ class BrandProfileDB(SQLModel, table=True):
     description: Optional[str] = None
     logo_url: Optional[str] = None
     is_verified: bool = Field(default=False)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     updated_at: Optional[datetime] = None
 
 
@@ -466,7 +466,7 @@ class TransactionDB(SQLModel, table=True):
     extra_metadata: Optional[str] = Field(
         default=None, sa_column_kwargs={"name": "extra_metadata"}
     )  # JSON string
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     updated_at: Optional[datetime] = None
     completed_at: Optional[datetime] = None
 
@@ -488,7 +488,7 @@ class CreatorWalletDB(SQLModel, table=True):
     stripe_account_id: Optional[str] = Field(index=True)
     payout_schedule: str = Field(default="monthly")
     minimum_payout: float = Field(default=10.0)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     updated_at: Optional[datetime] = None
     last_payout_at: Optional[datetime] = None
 
@@ -514,7 +514,7 @@ class PayoutDB(SQLModel, table=True):
     extra_metadata: Optional[str] = Field(
         default=None, sa_column_kwargs={"name": "extra_metadata"}
     )  # JSON string
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     updated_at: Optional[datetime] = None
     completed_at: Optional[datetime] = None
     failed_reason: Optional[str] = None
@@ -540,7 +540,7 @@ class SubscriptionDB(SQLModel, table=True):
     current_period_end: datetime
     cancelled_at: Optional[datetime] = None
     ended_at: Optional[datetime] = None
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     updated_at: Optional[datetime] = None
 
     # Relationships
@@ -572,7 +572,7 @@ class VideoAnalyticsDB(SQLModel, table=True):
     impressions: int = Field(default=0)
     period_start: datetime
     period_end: datetime
-    created_at: datetime = Field(default_factory=lambda: datetime.utcnow())
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 class CreatorAnalyticsDB(SQLModel, table=True):
@@ -600,7 +600,7 @@ class CreatorAnalyticsDB(SQLModel, table=True):
     most_viewed_video: Optional[str] = Field(default=None)
     most_liked_video: Optional[str] = Field(default=None)
     most_commented_video: Optional[str] = Field(default=None)
-    created_at: datetime = Field(default_factory=lambda: datetime.utcnow())
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     updated_at: Optional[datetime] = None
 
 
@@ -614,7 +614,7 @@ class TimeSeriesDataDB(SQLModel, table=True):
     data_points: Optional[str] = Field(default=None)  # JSON string
     period_start: datetime
     period_end: datetime
-    created_at: datetime = Field(default_factory=lambda: datetime.utcnow())
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 class AudienceDemographicsDB(SQLModel, table=True):
@@ -629,7 +629,7 @@ class AudienceDemographicsDB(SQLModel, table=True):
     language_distribution: Optional[str] = Field(default=None)  # JSON string
     period_start: datetime
     period_end: datetime
-    created_at: datetime = Field(default_factory=lambda: datetime.utcnow())
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 class ContentPerformanceDB(SQLModel, table=True):
@@ -653,7 +653,7 @@ class ContentPerformanceDB(SQLModel, table=True):
     publish_date: datetime
     first_24h_views: int = Field(default=0)
     first_7d_views: int = Field(default=0)
-    created_at: datetime = Field(default_factory=lambda: datetime.utcnow())
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     updated_at: Optional[datetime] = None
 
 
@@ -667,7 +667,7 @@ class ProjectMonetizationDB(SQLModel, table=True):
     suggested_tip_amounts: str = Field(default="[1, 5, 10, 20]")
     subscription_price: float = Field(default=9.99)
     subscription_tier_name: str = Field(default="Premium")
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     updated_at: Optional[datetime] = None
 
 
@@ -683,7 +683,7 @@ class CircleDB(SQLModel, table=True):
     user_id: str = Field(index=True)  # Owner
     name: str
     description: Optional[str] = None
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 class CircleMemberDB(SQLModel, table=True):
@@ -691,8 +691,8 @@ class CircleMemberDB(SQLModel, table=True):
 
     id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
     circle_id: str = Field(index=True)
-    member_id: str = Field(index=True)  # Followed creator user_id
-    added_at: datetime = Field(default_factory=datetime.utcnow)
+    user_id: str = Field(index=True)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 class PlaylistDB(SQLModel, table=True):
@@ -704,7 +704,7 @@ class PlaylistDB(SQLModel, table=True):
     description: Optional[str] = None
     is_collaborative: bool = Field(default=False)
     is_public: bool = Field(default=True)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 class PlaylistItemDB(SQLModel, table=True):
@@ -715,7 +715,7 @@ class PlaylistItemDB(SQLModel, table=True):
     video_id: str = Field(index=True)
     position: int
     added_by: str = Field(index=True)
-    added_at: datetime = Field(default_factory=datetime.utcnow)
+    added_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 class PlaylistCollaboratorDB(SQLModel, table=True):
@@ -724,7 +724,7 @@ class PlaylistCollaboratorDB(SQLModel, table=True):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
     playlist_id: str = Field(index=True)
     user_id: str = Field(index=True)
-    added_at: datetime = Field(default_factory=datetime.utcnow)
+    added_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 class ChallengeDB(SQLModel, table=True):
@@ -741,7 +741,7 @@ class ChallengeDB(SQLModel, table=True):
     prize_description: Optional[str] = None
     status: str = Field(default="upcoming", index=True)  # active/ended/upcoming
     participant_count: int = Field(default=0)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 class ChallengeParticipantDB(SQLModel, table=True):
@@ -751,7 +751,7 @@ class ChallengeParticipantDB(SQLModel, table=True):
     challenge_id: str = Field(index=True)
     user_id: str = Field(index=True)
     video_id: str = Field(index=True)
-    joined_at: datetime = Field(default_factory=datetime.utcnow)
+    joined_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 class CommunityGroupDB(SQLModel, table=True):
@@ -764,7 +764,7 @@ class CommunityGroupDB(SQLModel, table=True):
     rules: Optional[str] = None
     member_count: int = Field(default=0)
     is_public: bool = Field(default=True)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 class CommunityMemberDB(SQLModel, table=True):
@@ -774,7 +774,7 @@ class CommunityMemberDB(SQLModel, table=True):
     group_id: str = Field(index=True)
     user_id: str = Field(index=True)
     role: str = Field(default="member", index=True)  # member/moderator/admin
-    joined_at: datetime = Field(default_factory=datetime.utcnow)
+    joined_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 class DiscussionPostDB(SQLModel, table=True):
@@ -786,7 +786,7 @@ class DiscussionPostDB(SQLModel, table=True):
     content: str
     parent_id: Optional[str] = Field(default=None, index=True)  # For replies
     likes_count: int = Field(default=0)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 class EventDB(SQLModel, table=True):
@@ -799,12 +799,12 @@ class EventDB(SQLModel, table=True):
     description: Optional[str] = None
     event_type: str = Field(index=True)  # online/in_person/hybrid
     start_time: datetime
-    end_time: datetime
+    end_time: Optional[datetime] = None
     location: Optional[str] = None
     max_attendees: Optional[int] = None
     attendee_count: int = Field(default=0)
     status: str = Field(default="upcoming", index=True)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 class EventAttendeeDB(SQLModel, table=True):
@@ -814,7 +814,7 @@ class EventAttendeeDB(SQLModel, table=True):
     event_id: str = Field(index=True)
     user_id: str = Field(index=True)
     rsvp_status: str = Field(default="going", index=True)  # going/maybe/not_going
-    registered_at: datetime = Field(default_factory=datetime.utcnow)
+    registered_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 # ============================================================
@@ -830,7 +830,7 @@ class DuetDB(SQLModel, table=True):
     response_video_id: str = Field(index=True)
     creator_id: str = Field(index=True)
     duet_type: str = Field(index=True)  # duet/reaction/stitch
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 class CollaborativeVideoDB(SQLModel, table=True):
@@ -838,9 +838,10 @@ class CollaborativeVideoDB(SQLModel, table=True):
 
     id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
     video_id: str = Field(index=True)
+    creator_id: Optional[str] = Field(default=None, index=True)
     status: str = Field(default="draft", index=True)  # draft/recording/editing/published
     max_participants: int = Field(default=4)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 class VideoCollaboratorDB(SQLModel, table=True):
@@ -850,7 +851,7 @@ class VideoCollaboratorDB(SQLModel, table=True):
     collaborative_video_id: str = Field(index=True)
     user_id: str = Field(index=True)
     role: str = Field(default="participant", index=True)  # host/participant
-    joined_at: datetime = Field(default_factory=datetime.utcnow)
+    joined_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 class LiveStreamDB(SQLModel, table=True):
@@ -867,7 +868,7 @@ class LiveStreamDB(SQLModel, table=True):
     ended_at: Optional[datetime] = None
     scheduled_for: Optional[datetime] = None
     recording_url: Optional[str] = None
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 class LiveStreamGuestDB(SQLModel, table=True):
@@ -889,7 +890,7 @@ class WatchPartyDB(SQLModel, table=True):
     title: str
     status: str = Field(default="waiting", index=True)  # waiting/playing/ended
     participant_count: int = Field(default=0)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 class WatchPartyParticipantDB(SQLModel, table=True):
@@ -898,7 +899,7 @@ class WatchPartyParticipantDB(SQLModel, table=True):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
     party_id: str = Field(index=True)
     user_id: str = Field(index=True)
-    joined_at: datetime = Field(default_factory=datetime.utcnow)
+    joined_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 # ============================================================
@@ -918,7 +919,7 @@ class PollDB(SQLModel, table=True):
     start_time: float  # Time in video (seconds)
     end_time: float
     total_votes: int = Field(default=0)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 class PollOptionDB(SQLModel, table=True):
@@ -939,7 +940,7 @@ class PollVoteDB(SQLModel, table=True):
     poll_id: str = Field(index=True)
     option_id: str = Field(index=True)
     user_id: str = Field(index=True)
-    voted_at: datetime = Field(default_factory=datetime.utcnow)
+    voted_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 class ChapterMarkerDB(SQLModel, table=True):
@@ -952,7 +953,7 @@ class ChapterMarkerDB(SQLModel, table=True):
     end_time: float
     thumbnail_url: Optional[str] = None
     creator_id: str = Field(default="")
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 class ProductTagDB(SQLModel, table=True):
@@ -971,7 +972,7 @@ class ProductTagDB(SQLModel, table=True):
     start_time: float
     end_time: float
     click_count: int = Field(default=0)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 class VideoLinkDB(SQLModel, table=True):
@@ -985,7 +986,7 @@ class VideoLinkDB(SQLModel, table=True):
     icon: Optional[str] = None
     position: int = Field(default=0)
     click_count: int = Field(default=0)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 # ============================================================
@@ -1003,7 +1004,7 @@ class DirectMessageDB(SQLModel, table=True):
     content: str  # Encrypted content
     is_encrypted: bool = Field(default=True)
     read_at: Optional[datetime] = None
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 class ConversationDB(SQLModel, table=True):
@@ -1013,7 +1014,7 @@ class ConversationDB(SQLModel, table=True):
     participant_1_id: str = Field(index=True)
     participant_2_id: str = Field(index=True)
     last_message_at: Optional[datetime] = None
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 # ============================================================
@@ -1031,7 +1032,7 @@ class BadgeDB(SQLModel, table=True):
     badge_type: str = Field(index=True)  # supporter/creator/achievement
     requirement_type: Optional[str] = None
     requirement_value: Optional[str] = None
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 class UserBadgeDB(SQLModel, table=True):
@@ -1040,7 +1041,7 @@ class UserBadgeDB(SQLModel, table=True):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
     user_id: str = Field(index=True)
     badge_id: str = Field(index=True)
-    earned_at: datetime = Field(default_factory=datetime.utcnow)
+    earned_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 # ============================================================
@@ -1060,7 +1061,7 @@ class CourseDB(SQLModel, table=True):
     category: str = Field(index=True)
     status: str = Field(default="draft", index=True)  # draft/published/archived
     enrollment_count: int = Field(default=0)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 class CourseLessonDB(SQLModel, table=True):
@@ -1074,7 +1075,7 @@ class CourseLessonDB(SQLModel, table=True):
     position: int
     duration: float = Field(default=0.0)
     is_free_preview: bool = Field(default=False)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 class CourseEnrollmentDB(SQLModel, table=True):
@@ -1085,7 +1086,7 @@ class CourseEnrollmentDB(SQLModel, table=True):
     user_id: str = Field(index=True)
     status: str = Field(default="enrolled", index=True)
     progress_percentage: float = Field(default=0.0)
-    enrolled_at: datetime = Field(default_factory=datetime.utcnow)
+    enrolled_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     completed_at: Optional[datetime] = None
 
 
@@ -1106,7 +1107,7 @@ class UserPreferencesDB(SQLModel, table=True):
     preferred_categories: Optional[str] = None  # JSON array
     preferred_languages: Optional[str] = None  # JSON array
     location: Optional[str] = None
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     updated_at: Optional[datetime] = None
 
 
@@ -1117,7 +1118,7 @@ class FavoriteCreatorDB(SQLModel, table=True):
     user_id: str = Field(index=True)
     creator_id: str = Field(index=True)
     priority_notifications: bool = Field(default=True)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 # ============================================================
@@ -1150,7 +1151,7 @@ class SubscriptionTierDB(SQLModel, table=True):
     description: Optional[str] = None
     benefits: Optional[str] = None  # JSON array of benefits
     is_active: bool = Field(default=True)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 # ============================================================
@@ -1167,7 +1168,7 @@ class GDPRRequestDB(SQLModel, table=True):
     status: str = Field(default="pending", index=True)  # pending/processing/completed/failed
     details: Optional[str] = Field(default=None)
     result_url: Optional[str] = None
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     completed_at: Optional[datetime] = None
 
 
@@ -1179,7 +1180,7 @@ class ConsentRecordDB(SQLModel, table=True):
     consent_type: str = Field(index=True)
     granted: bool = Field(default=False)
     ip_address: Optional[str] = None
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 # ============================================================
@@ -1198,7 +1199,7 @@ class ColorGradingPresetDB(SQLModel, table=True):
     is_system: bool = Field(default=False)
     creator_id: Optional[str] = Field(default=None, index=True)  # Nullable for system presets
     usage_count: int = Field(default=0)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 class EffectLibraryDB(SQLModel, table=True):
@@ -1215,7 +1216,7 @@ class EffectLibraryDB(SQLModel, table=True):
     is_ar: bool = Field(default=False)
     usage_count: int = Field(default=0)
     creator_id: Optional[str] = Field(default=None, index=True)  # Nullable
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 class VideoSpeedSettingDB(SQLModel, table=True):
@@ -1225,7 +1226,7 @@ class VideoSpeedSettingDB(SQLModel, table=True):
     project_id: str = Field(index=True)
     track_id: str = Field(index=True)
     speed: float = Field(default=1.0)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 # ============================================================
@@ -1241,7 +1242,7 @@ class TrafficSourceDB(SQLModel, table=True):
     source_type: str = Field(index=True)  # direct/search/feed/share/external
     referrer_url: Optional[str] = None
     user_id: Optional[str] = Field(default=None, index=True)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 class RetentionDataDB(SQLModel, table=True):
@@ -1252,7 +1253,7 @@ class RetentionDataDB(SQLModel, table=True):
     second_offset: int  # Second in the video
     viewer_count: int = Field(default=0)
     drop_off_count: int = Field(default=0)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 class PostingTimeRecommendationDB(SQLModel, table=True):
@@ -1264,7 +1265,7 @@ class PostingTimeRecommendationDB(SQLModel, table=True):
     hour: int  # 0-23
     engagement_score: float = Field(default=0.0)
     sample_size: int = Field(default=0)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 # ============================================================
@@ -1284,7 +1285,7 @@ class AgeVerificationDB(SQLModel, table=True):
     is_minor: bool = Field(default=False)
     requires_parental_consent: bool = Field(default=False)
     status: str = Field(default="pending", index=True)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 # ============================================================
@@ -1301,4 +1302,4 @@ class LessonProgressDB(SQLModel, table=True):
     user_id: Optional[str] = Field(default=None, index=True)
     completed: bool = Field(default=False)
     completed_at: Optional[datetime] = None
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))

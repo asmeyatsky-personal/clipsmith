@@ -3,7 +3,7 @@ from typing import Optional
 from ...infrastructure.repositories.database import get_session
 from .auth_router import get_current_user
 from sqlmodel import Session, select
-from datetime import datetime
+from datetime import datetime, UTC
 import uuid
 
 router = APIRouter(prefix="/api/community", tags=["community"])
@@ -30,7 +30,7 @@ def create_circle(
         "name": name,
         "description": description,
         "user_id": current_user.id,
-        "created_at": datetime.utcnow().isoformat(),
+        "created_at": datetime.now(UTC).isoformat(),
     }
 
     # Store circle in session (placeholder until model is created)
@@ -448,16 +448,28 @@ def create_event(
     title = request_body.get("title")
     description = request_body.get("description", "")
     event_type = request_body.get("event_type", "general")
-    start_time = request_body.get("start_time")
-    end_time = request_body.get("end_time")
+    start_time_str = request_body.get("start_time")
+    end_time_str = request_body.get("end_time")
     location = request_body.get("location")
     max_attendees = request_body.get("max_attendees")
     group_id = request_body.get("group_id")
 
     if not title:
         raise HTTPException(status_code=400, detail="Event title is required")
-    if not start_time:
+    if not start_time_str:
         raise HTTPException(status_code=400, detail="Start time is required")
+
+    try:
+        start_time = datetime.fromisoformat(start_time_str)
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=400, detail="Invalid start_time format. Use ISO 8601.")
+
+    end_time = None
+    if end_time_str:
+        try:
+            end_time = datetime.fromisoformat(end_time_str)
+        except (ValueError, TypeError):
+            raise HTTPException(status_code=400, detail="Invalid end_time format. Use ISO 8601.")
 
     event = EventDB(
         id=str(uuid.uuid4()),

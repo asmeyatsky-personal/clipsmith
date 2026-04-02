@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field, replace
-from datetime import datetime
+from datetime import datetime, UTC
 from enum import Enum
 from typing import Optional
 import uuid
@@ -20,7 +20,7 @@ class EmailVerification:
     token: str
     status: EmailVerificationStatus = EmailVerificationStatus.PENDING
     expires_at: datetime
-    created_at: datetime = field(default_factory=datetime.utcnow)
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     verified_at: Optional[datetime] = None
 
     def verify(self) -> "EmailVerification":
@@ -28,7 +28,7 @@ class EmailVerification:
         from ..domain.entities.email_verification import EmailVerificationStatus
 
         return replace(
-            self, status=EmailVerificationStatus.VERIFIED, verified_at=datetime.utcnow()
+            self, status=EmailVerificationStatus.VERIFIED, verified_at=datetime.now(UTC)
         )
 
     def mark_as_expired(self) -> "EmailVerification":
@@ -58,12 +58,12 @@ class TwoFactorSecret:
     secret: str  # Encrypted secret key
     backup_codes: Optional[str] = None  # Backup codes for recovery
     is_active: bool = True
-    created_at: datetime = field(default_factory=datetime.utcnow())
+    created_at: datetime = field(default_factory=datetime.now(UTC))
     last_used_at: Optional[datetime] = None
 
     def deactivate(self) -> "TwoFactorSecret":
         """Deactivate 2FA method."""
-        return replace(self, is_active=False, last_used_at=datetime.utcnow())
+        return replace(self, is_active=False, last_used_at=datetime.now(UTC))
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -73,10 +73,10 @@ class TwoFactorVerification:
     secret_id: str
     code: str
     expires_at: datetime
-    created_at: datetime = field(default_factory=datetime.utcnow())
+    created_at: datetime = field(default_factory=datetime.now(UTC))
     used_at: Optional[datetime] = None
     is_verified: bool = False
 
     def verify(self) -> "TwoFactorVerification":
         """Mark verification as successful."""
-        return replace(self, is_verified=True, used_at=datetime.utcnow())
+        return replace(self, is_verified=True, used_at=datetime.now(UTC))

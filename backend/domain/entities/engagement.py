@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Optional
 import uuid
 
@@ -15,7 +15,7 @@ class Poll:
     start_time: Optional[datetime] = None
     end_time: Optional[datetime] = None
     total_votes: int = 0
-    created_at: datetime = field(default_factory=datetime.utcnow)
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -33,7 +33,7 @@ class PollVote:
     poll_id: str
     option_id: str
     user_id: str
-    voted_at: datetime = field(default_factory=datetime.utcnow)
+    voted_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -44,7 +44,7 @@ class ChapterMarker:
     start_time: float  # In seconds
     end_time: float  # In seconds
     thumbnail_url: Optional[str] = None
-    created_at: datetime = field(default_factory=datetime.utcnow)
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -62,7 +62,7 @@ class ProductTag:
     start_time: float = 0.0  # In seconds
     end_time: float = 0.0  # In seconds
     click_count: int = 0
-    created_at: datetime = field(default_factory=datetime.utcnow)
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -75,7 +75,7 @@ class VideoLink:
     icon: Optional[str] = None
     position: int = 0
     click_count: int = 0
-    created_at: datetime = field(default_factory=datetime.utcnow)
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -91,7 +91,7 @@ class Challenge:
     prize_description: Optional[str] = None
     status: str = "draft"  # draft, active, ended, cancelled
     participant_count: int = 0
-    created_at: datetime = field(default_factory=datetime.utcnow)
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -100,7 +100,7 @@ class ChallengeParticipant:
     challenge_id: str
     user_id: str
     video_id: str
-    joined_at: datetime = field(default_factory=datetime.utcnow)
+    joined_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -112,7 +112,7 @@ class Badge:
     badge_type: str = "achievement"  # achievement, milestone, special
     requirement_type: str = ""  # followers, views, uploads, streak
     requirement_value: int = 0
-    created_at: datetime = field(default_factory=datetime.utcnow)
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -120,4 +120,4 @@ class UserBadge:
     id: str = field(default_factory=lambda: str(uuid.uuid4()))
     user_id: str
     badge_id: str
-    earned_at: datetime = field(default_factory=datetime.utcnow)
+    earned_at: datetime = field(default_factory=lambda: datetime.now(UTC))

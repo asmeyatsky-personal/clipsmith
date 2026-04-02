@@ -3,7 +3,7 @@ from typing import Optional
 from ...infrastructure.repositories.database import get_session
 from .auth_router import get_current_user
 from sqlmodel import Session, select
-from datetime import datetime
+from datetime import datetime, UTC
 import uuid
 
 router = APIRouter(prefix="/api/social", tags=["social"])
@@ -175,10 +175,17 @@ def start_live_stream(
 
     title = request_body.get("title")
     description = request_body.get("description", "")
-    scheduled_for = request_body.get("scheduled_for")
+    scheduled_for_str = request_body.get("scheduled_for")
 
     if not title:
         raise HTTPException(status_code=400, detail="Title is required")
+
+    scheduled_for = None
+    if scheduled_for_str:
+        try:
+            scheduled_for = datetime.fromisoformat(scheduled_for_str)
+        except (ValueError, TypeError):
+            raise HTTPException(status_code=400, detail="Invalid scheduled_for format. Use ISO 8601.")
 
     stream = LiveStreamDB(
         id=str(uuid.uuid4()),
@@ -223,7 +230,7 @@ def end_live_stream(
         raise HTTPException(status_code=400, detail="Stream has already ended")
 
     stream.status = "ended"
-    stream.ended_at = datetime.utcnow().isoformat()
+    stream.ended_at = datetime.now(UTC)
     session.add(stream)
     session.commit()
 
@@ -299,6 +306,35 @@ def list_live_streams(
 
 
 # ==================== Watch Party Endpoints ====================
+
+
+@router.get("/watch-parties")
+def list_watch_parties(
+    status_filter: Optional[str] = Query(None, alias="status", description="Filter by status: active, ended"),
+    session: Session = Depends(get_session),
+):
+    """List watch parties, optionally filtered by status."""
+    from ...infrastructure.repositories.models import WatchPartyDB
+
+    query = select(WatchPartyDB)
+    if status_filter:
+        query = query.where(WatchPartyDB.status == status_filter)
+
+    parties = session.exec(query).all()
+
+    return {
+        "success": True,
+        "watch_parties": [
+            {
+                "id": p.id,
+                "video_id": p.video_id,
+                "title": p.title,
+                "host_id": p.host_id,
+                "status": p.status,
+            }
+            for p in parties
+        ],
+    }
 
 
 @router.post("/watch-parties")

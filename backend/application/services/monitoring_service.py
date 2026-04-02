@@ -2,7 +2,7 @@ import logging
 import json
 import os
 import sys
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Dict, Any, Optional
 from contextlib import contextmanager
 
@@ -57,7 +57,7 @@ class ClipsmithLogger:
             f"User Action: {action}",
             user_id=user_id,
             action_type="user_action",
-            timestamp=datetime.utcnow().isoformat(),
+            timestamp=datetime.now(UTC).isoformat(),
             **kwargs
         )
     
@@ -67,7 +67,7 @@ class ClipsmithLogger:
             f"Security Event: {event_type}",
             user_id=user_id,
             event_type="security",
-            timestamp=datetime.utcnow().isoformat(),
+            timestamp=datetime.now(UTC).isoformat(),
             severity=kwargs.get("severity", "medium"),
             **kwargs
         )
@@ -79,7 +79,7 @@ class ClipsmithLogger:
             metric_name=metric_name,
             value=value,
             metric_type="performance",
-            timestamp=datetime.utcnow().isoformat(),
+            timestamp=datetime.now(UTC).isoformat(),
             **kwargs
         )
     
@@ -94,7 +94,7 @@ class ClipsmithLogger:
             status_code=status_code,
             response_time=response_time,
             request_type="api_request",
-            timestamp=datetime.utcnow().isoformat(),
+            timestamp=datetime.now(UTC).isoformat(),
             **kwargs
         )
 
@@ -119,7 +119,7 @@ class MonitoringService:
         logger.log_api_request(method, endpoint, user_id, status_code, response_time)
         
         self.metrics['api_requests'].append({
-            'timestamp': datetime.utcnow(),
+            'timestamp': datetime.now(UTC),
             'method': method,
             'endpoint': endpoint,
             'user_id': user_id,
@@ -164,7 +164,7 @@ class MonitoringService:
             db_accessible = os.path.exists('database.db')
             
             health_status = {
-                'timestamp': datetime.utcnow().isoformat(),
+                'timestamp': datetime.now(UTC).isoformat(),
                 'status': 'healthy' if all([
                     cpu_percent < 90,  # CPU less than 90%
                     memory_percent < 90,  # Memory less than 90%
@@ -187,7 +187,7 @@ class MonitoringService:
         except Exception as e:
             logger.error(f"Health check failed: {e}")
             return {
-                'timestamp': datetime.utcnow().isoformat(),
+                'timestamp': datetime.now(UTC).isoformat(),
                 'status': 'error',
                 'error': str(e)
             }
@@ -208,7 +208,7 @@ class MonitoringService:
         total_errors = sum(self.metrics['error_counts'].values())
         
         return {
-            'timestamp': datetime.utcnow().isoformat(),
+            'timestamp': datetime.now(UTC).isoformat(),
             'active_users': len(self.metrics['active_users']),
             'recent_api_requests': len(recent_requests),
             'average_response_time': round(avg_response_time, 3),

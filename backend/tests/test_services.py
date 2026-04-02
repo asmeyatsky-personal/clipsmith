@@ -1,6 +1,6 @@
 import pytest
 import asyncio
-from datetime import datetime
+from datetime import datetime, UTC
 from unittest.mock import AsyncMock, MagicMock
 from sqlmodel import create_engine, Session
 from backend.domain.entities.user import User
@@ -41,7 +41,7 @@ def sample_user():
         id="test_user_123",
         username="testuser",
         email="test@example.com",
-        created_at=datetime.utcnow(),
+        created_at=datetime.now(UTC),
     )
 
 
@@ -267,8 +267,8 @@ class TestAnalyticsRepository:
             likes=25,
             comments=5,
             shares=3,
-            period_start=datetime.utcnow(),
-            period_end=datetime.utcnow(),
+            period_start=datetime.now(UTC),
+            period_end=datetime.now(UTC),
         )
 
         saved_analytics = repository.save_video_analytics(analytics)
@@ -290,8 +290,8 @@ class TestAnalyticsRepository:
                 likes=10,
                 comments=2,
                 shares=1,
-                period_start=datetime.utcnow(),
-                period_end=datetime.utcnow(),
+                period_start=datetime.now(UTC),
+                period_end=datetime.now(UTC),
             )
             repository.save_video_analytics(analytics)
 
@@ -308,7 +308,7 @@ class TestAnalyticsRepository:
         repository = SQLiteAnalyticsRepository(db_session)
 
         # Save test analytics for different videos on the same day
-        today = datetime.utcnow()
+        today = datetime.now(UTC)
         for i in range(3):
             analytics = VideoAnalytics(
                 video_id=f"video_{i}",

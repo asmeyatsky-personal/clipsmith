@@ -154,9 +154,7 @@ export const socialService = {
 
     // Watch Parties
     async getWatchParties(): Promise<{ success: boolean; watch_parties: WatchParty[] }> {
-        // Note: The backend doesn't have a list endpoint for watch parties,
-        // but the create and join endpoints exist.
-        return { success: true, watch_parties: [] };
+        return apiClient<{ success: boolean; watch_parties: WatchParty[] }>('/api/social/watch-parties');
     },
 
     async createWatchParty(data: { video_id: string; title: string }): Promise<WatchPartyResponse> {

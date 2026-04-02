@@ -1,6 +1,6 @@
 import logging
 from typing import List, Dict, Optional, Set
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from collections import defaultdict, Counter
 import math
 
@@ -28,7 +28,7 @@ class RecommendationEngine:
     def calculate_user_interests(self, user_interactions: List[Dict]) -> Dict[str, float]:
         """Calculate user interest scores based on interaction history."""
         interests = defaultdict(float)
-        current_time = datetime.utcnow()
+        current_time = datetime.now(UTC)
         
         for interaction in user_interactions:
             # Calculate time decay
@@ -84,7 +84,7 @@ class RecommendationEngine:
         if not all_videos:
             return []
         
-        current_time = datetime.utcnow()
+        current_time = datetime.now(UTC)
         user_following = user_following or set()
         
         # Get user's interest profile
@@ -158,7 +158,7 @@ class RecommendationEngine:
         hours: int = 24
     ) -> List[Video]:
         """Calculate trending videos based on recent engagement."""
-        current_time = datetime.utcnow()
+        current_time = datetime.now(UTC)
         cutoff_time = current_time - timedelta(hours=hours)
         
         # Filter recent interactions

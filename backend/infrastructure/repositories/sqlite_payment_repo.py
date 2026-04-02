@@ -205,9 +205,9 @@ class SQLitePaymentRepository(PaymentRepositoryPort):
         return wallet.balance if wallet else 0.0
 
     def get_total_earnings(self, user_id: str, days: int = 30) -> float:
-        from datetime import datetime, timedelta
+        from datetime import datetime, timedelta, UTC
 
-        cutoff_date = datetime.utcnow() - timedelta(days=days)
+        cutoff_date = datetime.now(UTC) - timedelta(days=days)
 
         result = self.session.exec(
             select(func.sum(TransactionDB.amount)).where(
@@ -223,9 +223,9 @@ class SQLitePaymentRepository(PaymentRepositoryPort):
         return float(result) if result else 0.0
 
     def get_transaction_summary(self, user_id: str, days: int = 30) -> Dict[str, Any]:
-        from datetime import datetime, timedelta
+        from datetime import datetime, timedelta, UTC
 
-        cutoff_date = datetime.utcnow() - timedelta(days=days)
+        cutoff_date = datetime.now(UTC) - timedelta(days=days)
 
         # Get transactions in date range
         transactions = self.session.exec(

@@ -1,5 +1,5 @@
 from typing import List, Optional, Dict, Any, Tuple
-from datetime import datetime
+from datetime import datetime, UTC
 from sqlmodel import Session, select, func
 from sqlalchemy import text
 from .models import (
@@ -155,7 +155,7 @@ class SQLiteDiscoveryRepository:
                 )
             if "location" in preferences_data:
                 prefs.location = preferences_data["location"]
-            prefs.updated_at = datetime.utcnow()
+            prefs.updated_at = datetime.now(UTC)
             self.session.add(prefs)
             self.session.commit()
 
@@ -224,7 +224,7 @@ class SQLiteDiscoveryRepository:
         video = self.session.get(VideoDB, video_id)
         if not video:
             return 0.0
-        age_hours = (datetime.utcnow() - video.created_at).total_seconds() / 3600
+        age_hours = (datetime.now(UTC) - video.created_at).total_seconds() / 3600
         # Videos less than 24h old get full freshness, decaying over 7 days
         if age_hours <= 24:
             return 1.0

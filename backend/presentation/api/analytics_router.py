@@ -8,7 +8,7 @@ from ...infrastructure.repositories.database import get_session
 from .auth_router import get_current_user
 from ...domain.entities.analytics import MetricType, TimePeriod, ContentType
 from sqlmodel import Session
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 
 router = APIRouter(prefix="/api/analytics", tags=["analytics"])
 
@@ -358,7 +358,7 @@ async def get_metrics_summary(
         raise HTTPException(status_code=400, detail="Invalid metrics or time period")
 
     # Calculate period boundaries
-    now = datetime.utcnow()
+    now = datetime.now(UTC)
     if period == TimePeriod.DAY:
         period_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
         period_end = period_start + timedelta(days=1)

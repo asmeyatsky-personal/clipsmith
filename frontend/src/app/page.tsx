@@ -1,11 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import { useAuthStore } from '@/lib/auth/auth-store';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
-import { Sparkles, ArrowRight, Play, Zap, Shield, Heart } from 'lucide-react';
+import { Sparkles, ArrowRight, Play, Zap, Shield, Heart, Loader2 } from 'lucide-react';
 import { VideoFeed } from '@/components/video/video-feed';
 import CreatorDashboard from '@/components/CreatorDashboard';
 
@@ -145,7 +145,13 @@ export default function Home() {
                     </div>
                 </div>
 
-                <VideoFeed />
+                <Suspense fallback={
+                    <div className="flex items-center justify-center py-20">
+                        <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+                    </div>
+                }>
+                    <VideoFeed />
+                </Suspense>
             </section>
         </div>
     );

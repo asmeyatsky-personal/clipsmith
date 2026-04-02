@@ -1,5 +1,5 @@
 from typing import List, Optional
-from datetime import datetime
+from datetime import datetime, UTC
 from sqlmodel import Session, select
 from sqlalchemy import text
 from .models import (
@@ -270,6 +270,6 @@ class SQLiteSocialRepository:
                 "UPDATE directmessagedb SET read_at = :now "
                 "WHERE conversation_id = :cid AND receiver_id = :uid AND read_at IS NULL"
             ),
-            {"now": datetime.utcnow(), "cid": conversation_id, "uid": user_id},
+            {"now": datetime.now(UTC), "cid": conversation_id, "uid": user_id},
         )
         self.session.commit()

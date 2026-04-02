@@ -1,5 +1,5 @@
 from typing import List, Optional, Dict, Any
-from datetime import datetime
+from datetime import UTC, datetime
 
 
 class CourseService:
@@ -116,7 +116,7 @@ class CourseService:
 
         # Mark as completed if all lessons done
         if progress_percentage >= 100.0:
-            self.repository.complete_enrollment(enrollment.id, datetime.utcnow())
+            self.repository.complete_enrollment(enrollment.id, datetime.now(UTC))
 
         return {
             "success": True,
@@ -200,7 +200,7 @@ class CourseService:
                 follower_count=follower_count,
                 monthly_views=monthly_views,
                 is_eligible=is_eligible,
-                applied_at=datetime.utcnow() if is_eligible else None,
+                applied_at=datetime.now(UTC) if is_eligible else None,
                 status="approved" if is_eligible else "pending",
             )
             self.repository.save_creator_fund_eligibility(eligibility)

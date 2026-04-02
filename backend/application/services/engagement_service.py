@@ -1,5 +1,5 @@
 from typing import List, Optional, Dict, Any
-from datetime import datetime
+from datetime import UTC, datetime
 
 
 class EngagementService:
@@ -209,7 +209,7 @@ class EngagementService:
         from ...infrastructure.repositories.models import ChallengeDB
 
         status = "upcoming"
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         if start_date and start_date <= now:
             status = "active"
 

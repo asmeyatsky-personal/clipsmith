@@ -1,6 +1,6 @@
 import logging
 from typing import List, Optional, Dict, Any
-from datetime import datetime, date
+from datetime import UTC, date, datetime
 
 logger = logging.getLogger(__name__)
 
@@ -75,7 +75,7 @@ class ComplianceService:
                 await self.withdraw_consent(request.user_id, consent_type="all")
 
             self.repository.update_gdpr_request_status(
-                request_id, "completed", completed_at=datetime.utcnow()
+                request_id, "completed", completed_at=datetime.now(UTC)
             )
             return {"success": True, "status": "completed"}
 

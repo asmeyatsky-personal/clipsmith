@@ -101,9 +101,9 @@ class SQLiteContentModerationRepository(ContentModerationRepositoryPort):
 
     def get_statistics(self, days: int = 30) -> Dict[str, int]:
         """Get moderation statistics for the last N days."""
-        from datetime import datetime, timedelta
+        from datetime import datetime, timedelta, UTC
 
-        cutoff_date = datetime.utcnow() - timedelta(days=days)
+        cutoff_date = datetime.now(UTC) - timedelta(days=days)
 
         # Total moderated
         total_query = (
@@ -192,9 +192,9 @@ class SQLiteContentModerationRepository(ContentModerationRepositoryPort):
 
     def delete_old_records(self, days: int = 90) -> int:
         """Clean up old moderation records."""
-        from datetime import datetime, timedelta
+        from datetime import datetime, timedelta, UTC
 
-        cutoff_date = datetime.utcnow() - timedelta(days=days)
+        cutoff_date = datetime.now(UTC) - timedelta(days=days)
 
         statement = select(ContentModerationDB).where(
             ContentModerationDB.completed_at < cutoff_date

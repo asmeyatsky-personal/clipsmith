@@ -1,4 +1,5 @@
 import json
+from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Request
 from ...infrastructure.repositories.database import get_session
 from ...infrastructure.repositories.models import (
@@ -8,10 +9,41 @@ from ...infrastructure.repositories.models import (
     AIVideoGenerationDB,
     AIVoiceOverDB,
 )
+from ...infrastructure.security.jwt_adapter import JWTAdapter
+from ...infrastructure.repositories.sqlite_user_repo import SQLiteUserRepository
 from sqlmodel import Session, select
 from datetime import datetime
 
 router = APIRouter(prefix="/api/ai", tags=["ai_tools"])
+
+
+def get_optional_current_user(
+    request: Request,
+    session: Session = Depends(get_session),
+) -> Optional[dict]:
+    """Extract the current user from JWT if present, otherwise return None."""
+    token = request.cookies.get("access_token")
+    if not token:
+        auth_header = request.headers.get("Authorization", "")
+        if auth_header.startswith("Bearer "):
+            token = auth_header[7:]
+    if not token:
+        return None
+
+    payload = JWTAdapter.verify_token(token)
+    if not payload:
+        return None
+
+    user_id = payload.get("user_id")
+    if not user_id:
+        return None
+
+    user_repo = SQLiteUserRepository(session)
+    user = user_repo.get_by_id(user_id)
+    if not user:
+        return None
+
+    return {"id": user.id, "username": user.username}
 
 
 # ==================== AI Caption Generation ====================
@@ -21,7 +53,7 @@ router = APIRouter(prefix="/api/ai", tags=["ai_tools"])
 async def generate_ai_captions(
     request: Request,
     session: Session = Depends(get_session),
-    current_user: dict = None,
+    current_user: Optional[dict] = Depends(get_optional_current_user),
 ):
     """Request AI-generated captions for a video."""
     body = await request.json()
@@ -60,7 +92,7 @@ async def generate_ai_captions(
 async def get_caption_job(
     job_id: str,
     session: Session = Depends(get_session),
-    current_user: dict = None,
+    current_user: Optional[dict] = Depends(get_optional_current_user),
 ):
     """Get caption generation job status."""
     job = session.get(AICaptionJobDB, job_id)
@@ -153,7 +185,7 @@ async def get_template(
 async def create_ai_template(
     request: Request,
     session: Session = Depends(get_session),
-    current_user: dict = None,
+    current_user: Optional[dict] = Depends(get_optional_current_user),
 ):
     """Create a new AI template."""
     if not current_user:
@@ -184,7 +216,7 @@ async def use_template(
     template_id: str,
     request: Request,
     session: Session = Depends(get_session),
-    current_user: dict = None,
+    current_user: Optional[dict] = Depends(get_optional_current_user),
 ):
     """Use a template to create a new project."""
     if not current_user:
@@ -228,7 +260,7 @@ async def use_template(
 async def generate_ai_video(
     request: Request,
     session: Session = Depends(get_session),
-    current_user: dict = None,
+    current_user: Optional[dict] = Depends(get_optional_current_user),
 ):
     """Request AI video generation."""
     if not current_user:
@@ -261,7 +293,7 @@ async def generate_ai_video(
 async def get_video_generation_job(
     job_id: str,
     session: Session = Depends(get_session),
-    current_user: dict = None,
+    current_user: Optional[dict] = Depends(get_optional_current_user),
 ):
     """Get video generation job status."""
     job = session.get(AIVideoGenerationDB, job_id)
@@ -290,7 +322,7 @@ async def get_video_generation_job(
 async def generate_ai_voiceover(
     request: Request,
     session: Session = Depends(get_session),
-    current_user: dict = None,
+    current_user: Optional[dict] = Depends(get_optional_current_user),
 ):
     """Request AI voice-over generation."""
     if not current_user:
@@ -321,7 +353,7 @@ async def generate_ai_voiceover(
 async def get_voiceover_job(
     job_id: str,
     session: Session = Depends(get_session),
-    current_user: dict = None,
+    current_user: Optional[dict] = Depends(get_optional_current_user),
 ):
     """Get voice-over generation job status."""
     job = session.get(AIVoiceOverDB, job_id)

@@ -17,7 +17,7 @@ import os
 os.environ.setdefault("JWT_SECRET_KEY", "test-secret-key-for-tests-only")
 
 import pytest
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from dataclasses import replace as dc_replace
 
 
@@ -137,7 +137,7 @@ class TestSubscription:
 
     def test_subscription_cancel(self):
         from backend.domain.entities.payment import Subscription
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         sub = Subscription(
             user_id="u1", creator_id="c1", stripe_subscription_id="sub_123",
             status="active", amount=5.99, interval="month",
@@ -149,7 +149,7 @@ class TestSubscription:
 
     def test_subscription_renew(self):
         from backend.domain.entities.payment import Subscription
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         sub = Subscription(
             user_id="u1", creator_id="c1", stripe_subscription_id="sub_123",
             status="active", amount=5.99, interval="month",
@@ -252,7 +252,7 @@ class TestCommunityEntities:
 
     def test_event_creation(self):
         from backend.domain.entities.community import Event
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         event = Event(
             creator_id="u1", title="Meetup",
             start_time=now, end_time=now + timedelta(hours=2),
@@ -368,7 +368,7 @@ class TestEngagementEntities:
 
     def test_challenge_creation(self):
         from backend.domain.entities.engagement import Challenge
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         challenge = Challenge(
             hashtag_id="h1", creator_id="u1", title="Dance Challenge",
             start_date=now, end_date=now + timedelta(days=7), status="active",

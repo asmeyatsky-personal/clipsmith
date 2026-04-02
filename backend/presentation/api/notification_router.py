@@ -49,7 +49,7 @@ def get_current_user(
             detail="Invalid authentication credentials",
         )
 
-    user = user_repo.get_by_id(payload.get("sub"))
+    user = user_repo.get_by_id(payload.get("user_id"))
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

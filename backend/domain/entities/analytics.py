@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field, replace
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import Optional, Dict, Any, List
 from enum import Enum
 import uuid
@@ -50,7 +50,7 @@ class VideoAnalytics:
     impressions: int = 0  # Total times shown in feed
     period_start: datetime
     period_end: datetime
-    created_at: datetime = field(default_factory=lambda: datetime.utcnow())
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
     def calculate_engagement_rate(self) -> float:
         """Calculate engagement rate."""
@@ -136,7 +136,7 @@ class CreatorAnalytics:
     most_liked_video: Optional[str] = None  # Video ID
     most_commented_video: Optional[str] = None  # Video ID
 
-    created_at: datetime = field(default_factory=lambda: datetime.utcnow())
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     updated_at: Optional[datetime] = None
 
     def calculate_growth_rate(self, previous_followers: int) -> float:
@@ -162,7 +162,7 @@ class TimeSeriesData:
     data_points: List[Dict[str, Any]] = field(default_factory=list)
     period_start: datetime
     period_end: datetime
-    created_at: datetime = field(default_factory=lambda: datetime.utcnow())
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
     def add_data_point(
         self,
@@ -190,7 +190,7 @@ class AudienceDemographics:
     language_distribution: Dict[str, int] = field(default_factory=dict)
     period_start: datetime
     period_end: datetime
-    created_at: datetime = field(default_factory=lambda: datetime.utcnow())
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
     def get_top_location(self) -> Optional[str]:
         """Get the location with most viewers."""
@@ -234,12 +234,12 @@ class ContentPerformance:
     first_24h_views: int = 0
     first_7d_views: int = 0
 
-    created_at: datetime = field(default_factory=lambda: datetime.utcnow())
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     updated_at: Optional[datetime] = None
 
     def calculate_views_per_day(self) -> float:
         """Calculate average views per day since publish."""
-        days_since_publish = (datetime.utcnow() - self.publish_date).days
+        days_since_publish = (datetime.now(UTC) - self.publish_date).days
         if days_since_publish == 0:
             return float(self.views)
         return self.views / days_since_publish

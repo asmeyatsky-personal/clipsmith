@@ -1,5 +1,5 @@
 from typing import List, Optional, Dict, Any
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from ...domain.entities.payment import (
     Transaction,
     CreatorWallet,
@@ -378,7 +378,7 @@ class PaymentService:
         self, creator_id: str, days: int = 30
     ) -> Dict[str, Any]:
         """Get analytics for creator earnings."""
-        cutoff_date = datetime.utcnow() - timedelta(days=days)
+        cutoff_date = datetime.now(UTC) - timedelta(days=days)
 
         # Get subscribers count
         subscribers = self.repository.get_creator_subscribers(creator_id)

@@ -1,5 +1,5 @@
 from typing import List, Optional
-from datetime import datetime, date
+from datetime import datetime, date, UTC
 from sqlmodel import Session, select
 from sqlalchemy import text
 from .models import (
@@ -63,7 +63,7 @@ class SQLiteComplianceRepository:
         In a production system, this would upload to object storage.
         For now, we store a reference and return a synthetic URL.
         """
-        export_url = f"/api/v1/compliance/exports/{user_id}/{datetime.utcnow().strftime('%Y%m%d%H%M%S')}"
+        export_url = f"/api/v1/compliance/exports/{user_id}/{datetime.now(UTC).strftime('%Y%m%d%H%M%S')}"
         return export_url
 
     # ---- Data export helper methods (called by ComplianceService.export_user_data) ----

@@ -1,5 +1,5 @@
 from typing import List, Optional
-from datetime import datetime
+from datetime import datetime, UTC
 from sqlmodel import Session, select, func
 from sqlalchemy import text
 from .models import (
@@ -141,7 +141,7 @@ class SQLiteCourseRepository:
         if existing:
             if not existing.completed:
                 existing.completed = True
-                existing.completed_at = datetime.utcnow()
+                existing.completed_at = datetime.now(UTC)
                 self.session.add(existing)
                 self.session.commit()
         else:
@@ -149,7 +149,7 @@ class SQLiteCourseRepository:
                 enrollment_id=enrollment_id,
                 lesson_id=lesson_id,
                 completed=True,
-                completed_at=datetime.utcnow(),
+                completed_at=datetime.now(UTC),
             )
             self.session.add(progress)
             self.session.commit()
@@ -256,6 +256,6 @@ class SQLiteCourseRepository:
                 eligibility.is_eligible = is_eligible
                 if is_eligible and eligibility.status == "pending":
                     eligibility.status = "approved"
-                    eligibility.approved_at = datetime.utcnow()
+                    eligibility.approved_at = datetime.now(UTC)
             self.session.add(eligibility)
             self.session.commit()

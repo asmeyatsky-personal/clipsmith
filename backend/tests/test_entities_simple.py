@@ -1,5 +1,5 @@
 import pytest
-from datetime import datetime
+from datetime import datetime, UTC
 from sqlmodel import create_engine, Session
 from backend.domain.entities.user import User
 from backend.domain.entities.video import Video, VideoStatus
@@ -30,7 +30,7 @@ def sample_user():
         id="test_user_123",
         username="testuser",
         email="test@example.com",
-        created_at=datetime.utcnow(),
+        created_at=datetime.now(UTC),
     )
 
 
@@ -92,8 +92,8 @@ class TestBasicEntities:
             likes=25,
             comments=5,
             shares=3,
-            period_start=datetime.utcnow(),
-            period_end=datetime.utcnow(),
+            period_start=datetime.now(UTC),
+            period_end=datetime.now(UTC),
         )
 
         assert analytics.video_id == sample_video.id
@@ -130,8 +130,8 @@ class TestBusinessLogic:
             comments=5,
             shares=3,
             watch_time=300.0,
-            period_start=datetime.utcnow(),
-            period_end=datetime.utcnow(),
+            period_start=datetime.now(UTC),
+            period_end=datetime.now(UTC),
         )
 
         engagement_rate = analytics.calculate_engagement_rate()

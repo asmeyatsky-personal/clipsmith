@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field, replace
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Optional, List
 import uuid
 
@@ -12,7 +12,7 @@ class Playlist:
     description: str = ""
     is_collaborative: bool = False
     is_public: bool = True
-    created_at: datetime = field(default_factory=datetime.utcnow)
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
     def add_item(self, video_id: str, position: int, added_by: str) -> "PlaylistItem":
         """Create a new playlist item for this playlist."""
@@ -35,7 +35,7 @@ class PlaylistItem:
     video_id: str
     position: int = 0
     added_by: str = ""
-    added_at: datetime = field(default_factory=datetime.utcnow)
+    added_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -43,7 +43,7 @@ class PlaylistCollaborator:
     id: str = field(default_factory=lambda: str(uuid.uuid4()))
     playlist_id: str
     user_id: str
-    added_at: datetime = field(default_factory=datetime.utcnow)
+    added_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -57,7 +57,7 @@ class UserPreferences:
     preferred_categories: List[str] = field(default_factory=list)
     preferred_languages: List[str] = field(default_factory=list)
     location: Optional[str] = None
-    created_at: datetime = field(default_factory=datetime.utcnow)
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     updated_at: Optional[datetime] = None
 
 
@@ -67,7 +67,7 @@ class FavoriteCreator:
     user_id: str
     creator_id: str
     priority_notifications: bool = False
-    created_at: datetime = field(default_factory=datetime.utcnow)
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -88,7 +88,7 @@ class TrafficSource:
     source_type: str = ""  # organic, search, share, external, recommended
     referrer_url: Optional[str] = None
     user_id: Optional[str] = None
-    created_at: datetime = field(default_factory=datetime.utcnow)
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -98,7 +98,7 @@ class RetentionData:
     second_offset: int = 0
     viewer_count: int = 0
     drop_off_count: int = 0
-    created_at: datetime = field(default_factory=datetime.utcnow)
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
 
 @dataclass(frozen=True, kw_only=True)

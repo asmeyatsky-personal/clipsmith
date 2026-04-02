@@ -1,7 +1,7 @@
 import json
 import os
 import uuid
-from datetime import datetime
+from datetime import datetime, UTC
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Request
 from fastapi.security import OAuth2PasswordBearer
 from typing import Annotated, List, Optional
@@ -525,7 +525,7 @@ async def publish_project(
     visibility = body.get("visibility", "public")
 
     project.status = "published"
-    project.published_at = datetime.utcnow()
+    project.published_at = datetime.now(UTC)
     project.permission = visibility
     session.add(project)
     session.commit()
@@ -749,7 +749,7 @@ async def set_color_grade(
                     key,
                     json.dumps(body[key]) if key == "filters" else body[key],
                 )
-        existing.updated_at = datetime.utcnow()
+        existing.updated_at = datetime.now(UTC)
         session.add(existing)
         session.commit()
         return {"success": True, "color_grade_id": existing.id}
@@ -848,7 +848,7 @@ async def set_audio_mix(
                     if key in ["equalizer", "audio_effects"]
                     else body[key],
                 )
-        existing.updated_at = datetime.utcnow()
+        existing.updated_at = datetime.now(UTC)
         session.add(existing)
         session.commit()
         return {"success": True, "audio_mix_id": existing.id}
@@ -943,7 +943,7 @@ async def set_chroma_key(
         ]:
             if key in body:
                 setattr(existing, key, body[key])
-        existing.updated_at = datetime.utcnow()
+        existing.updated_at = datetime.now(UTC)
         session.add(existing)
         session.commit()
         return {"success": True, "chroma_key_id": existing.id}

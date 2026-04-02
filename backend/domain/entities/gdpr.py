@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from typing import Optional, Dict, Any, List
 from enum import Enum
 import uuid
@@ -48,7 +48,7 @@ class ConsentRecord:
     user_id: str
     consent_type: ConsentType
     granted: bool
-    granted_at: datetime = field(default_factory=lambda: datetime.utcnow())
+    granted_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     revoked_at: Optional[datetime] = None
     ip_address: Optional[str] = None
     user_agent: Optional[str] = None
@@ -57,7 +57,7 @@ class ConsentRecord:
 
     def revoke(self) -> "ConsentRecord":
         """Revoke consent."""
-        return self.replace(granted=False, revoked_at=datetime.utcnow())
+        return self.replace(granted=False, revoked_at=datetime.now(UTC))
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -69,7 +69,7 @@ class GDPRRequest:
     data_categories: List[DataCategory] = field(default_factory=list)
     description: Optional[str] = None
     admin_notes: Optional[str] = None
-    created_at: datetime = field(default_factory=lambda: datetime.utcnow())
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     updated_at: Optional[datetime] = None
     processed_at: Optional[datetime] = None
     expires_at: Optional[datetime] = None
@@ -80,7 +80,7 @@ class GDPRRequest:
         """Mark request as being processed."""
         return self.replace(
             status=RequestStatus.PROCESSING,
-            updated_at=datetime.utcnow(),
+            updated_at=datetime.now(UTC),
             processed_by=admin_id,
         )
 
@@ -88,8 +88,8 @@ class GDPRRequest:
         """Mark request as completed."""
         return self.replace(
             status=RequestStatus.COMPLETED,
-            updated_at=datetime.utcnow(),
-            processed_at=datetime.utcnow(),
+            updated_at=datetime.now(UTC),
+            processed_at=datetime.now(UTC),
             admin_notes=notes,
         )
 
@@ -97,14 +97,14 @@ class GDPRRequest:
         """Mark request as failed."""
         return self.replace(
             status=RequestStatus.FAILED,
-            updated_at=datetime.utcnow(),
+            updated_at=datetime.now(UTC),
             admin_notes=reason,
         )
 
     def cancel(self) -> "GDPRRequest":
         """Cancel the request."""
         return self.replace(
-            status=RequestStatus.CANCELLED, updated_at=datetime.utcnow()
+            status=RequestStatus.CANCELLED, updated_at=datetime.now(UTC)
         )
 
 
@@ -120,13 +120,13 @@ class DataExport:
     file_size: Optional[int] = None
     checksum: Optional[str] = None  # For integrity verification
     expires_at: Optional[datetime] = None
-    created_at: datetime = field(default_factory=lambda: datetime.utcnow())
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     downloaded_at: Optional[datetime] = None
     deleted_at: Optional[datetime] = None
 
     def set_expiry(self, days: int = 30) -> "DataExport":
         """Set expiry date for download link."""
-        return self.replace(expires_at=datetime.utcnow() + timedelta(days=days))
+        return self.replace(expires_at=datetime.now(UTC) + timedelta(days=days))
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -144,7 +144,7 @@ class DataDeletion:
     verification_token: Optional[str] = None
     verification_sent_at: Optional[datetime] = None
     verified_at: Optional[datetime] = None
-    created_at: datetime = field(default_factory=lambda: datetime.utcnow())
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     completed_at: Optional[datetime] = None
 
     def start_deletion(self) -> "DataDeletion":
@@ -156,7 +156,7 @@ class DataDeletion:
         return self.replace(
             deletion_status="completed",
             deleted_items=deleted_items,
-            completed_at=datetime.utcnow(),
+            completed_at=datetime.now(UTC),
         )
 
 
@@ -171,10 +171,10 @@ class CookieConsent:
     third_party_consent: bool = False
     essential_cookies: bool = True  # Always required for functionality
     consent_version: str = "1.0"
-    granted_at: datetime = field(default_factory=lambda: datetime.utcnow())
+    granted_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     ip_address: Optional[str] = None
     user_agent: Optional[str] = None
-    last_updated: datetime = field(default_factory=lambda: datetime.utcnow())
+    last_updated: datetime = field(default_factory=lambda: datetime.now(UTC))
 
     def update_consent(self, **consent_updates) -> "CookieConsent":
         """Update specific consent categories."""
@@ -188,7 +188,7 @@ class CookieConsent:
         # Update with new values
         current_consent.update(consent_updates)
 
-        return self.replace(**current_consent, last_updated=datetime.utcnow())
+        return self.replace(**current_consent, last_updated=datetime.now(UTC))
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -204,9 +204,9 @@ class PrivacySettings:
     third_party_sharing: bool = False
     data_retention_days: int = 365  # How long to retain user data
     auto_delete_inactive: bool = False
-    created_at: datetime = field(default_factory=lambda: datetime.utcnow())
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     updated_at: Optional[datetime] = None
 
     def update_setting(self, **settings) -> "PrivacySettings":
         """Update privacy settings."""
-        return self.replace(**settings, updated_at=datetime.utcnow())
+        return self.replace(**settings, updated_at=datetime.now(UTC))

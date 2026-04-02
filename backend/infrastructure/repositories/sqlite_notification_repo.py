@@ -1,4 +1,5 @@
 from typing import List, Optional
+from datetime import datetime, UTC
 from sqlmodel import Session, select, func, and_
 from ...domain.entities.notification import Notification, NotificationStatus
 from ...domain.ports.repository_ports import NotificationRepositoryPort
@@ -60,7 +61,7 @@ class SQLiteNotificationRepository(NotificationRepositoryPort):
         notification_db = self.session.get(NotificationDB, notification_id)
         if notification_db:
             notification_db.status = NotificationStatus.READ.value
-            notification_db.read_at = datetime.utcnow()
+            notification_db.read_at = datetime.now(UTC)
             self.session.add(notification_db)
             self.session.commit()
             self.session.refresh(notification_db)
@@ -69,8 +70,6 @@ class SQLiteNotificationRepository(NotificationRepositoryPort):
 
     def mark_all_as_read(self, user_id: str) -> int:
         """Mark all unread notifications for a user as read."""
-        from datetime import datetime
-
         # Get all unread notifications
         query = select(NotificationDB).where(
             and_(
@@ -85,7 +84,7 @@ class SQLiteNotificationRepository(NotificationRepositoryPort):
         count = 0
         for notification_db in unread_notifications:
             notification_db.status = NotificationStatus.READ.value
-            notification_db.read_at = datetime.utcnow()
+            notification_db.read_at = datetime.now(UTC)
             self.session.add(notification_db)
             count += 1
 

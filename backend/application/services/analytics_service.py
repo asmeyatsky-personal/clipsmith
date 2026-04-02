@@ -1,5 +1,5 @@
 from typing import List, Optional, Dict, Any
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from dataclasses import replace
 from ...domain.entities.analytics import (
     VideoAnalytics,
@@ -30,7 +30,7 @@ class AnalyticsService:
     ) -> Dict[str, Any]:
         """Track a video view."""
         # Get existing analytics for today
-        today = datetime.utcnow()
+        today = datetime.now(UTC)
         start_of_day = today.replace(hour=0, minute=0, second=0, microsecond=0)
         end_of_day = start_of_day + timedelta(days=1)
 
@@ -66,7 +66,7 @@ class AnalyticsService:
         self, video_id: str, user_id: str, engagement_type: str, value: int = 1
     ) -> Dict[str, Any]:
         """Track video engagement (like, comment, share, tip)."""
-        today = datetime.utcnow()
+        today = datetime.now(UTC)
         start_of_day = today.replace(hour=0, minute=0, second=0, microsecond=0)
         end_of_day = start_of_day + timedelta(days=1)
 
@@ -153,7 +153,7 @@ class AnalyticsService:
         else:
             # Create new content performance record
             # This would need video publish date
-            now = datetime.utcnow()
+            now = datetime.now(UTC)
             new_performance = ContentPerformance(
                 user_id=user_id,
                 video_id=video_id,
@@ -176,7 +176,7 @@ class AnalyticsService:
     ) -> Dict[str, Any]:
         """Generate comprehensive analytics for creator."""
         # Calculate period boundaries
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         if period == TimePeriod.DAY:
             period_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
             period_end = period_start + timedelta(days=1)
@@ -259,7 +259,7 @@ class AnalyticsService:
     async def get_creator_dashboard(self, user_id: str) -> Dict[str, Any]:
         """Get comprehensive dashboard data for creator."""
         # Get analytics for different periods
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
 
         # Current month
         month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
@@ -338,7 +338,7 @@ class AnalyticsService:
         self, user_id: str, metric_type: MetricType, time_period: TimePeriod
     ) -> Dict[str, Any]:
         """Generate time series data for a specific metric."""
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
 
         # Calculate period boundaries based on time_period
         if time_period == TimePeriod.DAY:
@@ -442,7 +442,7 @@ class AnalyticsService:
         self, user_id: str, demographics_data: Dict[str, Any]
     ) -> Dict[str, Any]:
         """Update audience demographics for creator."""
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         period_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
         period_end = period_start + timedelta(days=32)
         period_end = period_end.replace(day=1) - timedelta(seconds=1)

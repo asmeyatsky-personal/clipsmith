@@ -1,7 +1,7 @@
 import json
 import logging
 from typing import Dict, Any, List, Optional
-from datetime import datetime
+from datetime import UTC, datetime
 from ...domain.entities.content_moderation import (
     ContentModeration,
     ModerationStatus,
@@ -423,9 +423,9 @@ class HumanModerationService:
         self, reviewer_id: str, days: int = 30
     ) -> Dict[str, Any]:
         """Get statistics for a specific reviewer."""
-        from datetime import datetime, timedelta
+        from datetime import UTC, datetime, timedelta
 
-        cutoff_date = datetime.utcnow() - timedelta(days=days)
+        cutoff_date = datetime.now(UTC) - timedelta(days=days)
 
         moderations = self.moderation_repo.get_moderations_by_reviewer(reviewer_id)
 

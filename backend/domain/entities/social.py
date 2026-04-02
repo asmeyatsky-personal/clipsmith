@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field, replace
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import Optional
 import uuid
 
@@ -11,7 +11,7 @@ class Duet:
     response_video_id: str
     creator_id: str
     duet_type: str = "duet"  # duet, reaction, stitch
-    created_at: datetime = field(default_factory=datetime.utcnow)
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -20,7 +20,7 @@ class CollaborativeVideo:
     video_id: str
     status: str = "open"  # open, in_progress, completed, cancelled
     max_participants: int = 4
-    created_at: datetime = field(default_factory=datetime.utcnow)
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -29,7 +29,7 @@ class VideoCollaborator:
     collaborative_video_id: str
     user_id: str
     role: str = "contributor"  # contributor, editor, reviewer
-    joined_at: datetime = field(default_factory=datetime.utcnow)
+    joined_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -45,14 +45,14 @@ class LiveStream:
     ended_at: Optional[datetime] = None
     scheduled_for: Optional[datetime] = None
     recording_url: Optional[str] = None
-    created_at: datetime = field(default_factory=datetime.utcnow)
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
     def go_live(self) -> "LiveStream":
         """Transition stream to live status."""
         return replace(
             self,
             status="live",
-            started_at=datetime.utcnow(),
+            started_at=datetime.now(UTC),
         )
 
     def end_stream(self) -> "LiveStream":
@@ -60,7 +60,7 @@ class LiveStream:
         return replace(
             self,
             status="ended",
-            ended_at=datetime.utcnow(),
+            ended_at=datetime.now(UTC),
         )
 
     def add_viewer(self) -> "LiveStream":
@@ -96,7 +96,7 @@ class WatchParty:
     title: str
     status: str = "waiting"  # waiting, active, ended
     participant_count: int = 0
-    created_at: datetime = field(default_factory=datetime.utcnow)
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
     def start(self) -> "WatchParty":
         """Start the watch party."""
@@ -112,7 +112,7 @@ class WatchPartyParticipant:
     id: str = field(default_factory=lambda: str(uuid.uuid4()))
     party_id: str
     user_id: str
-    joined_at: datetime = field(default_factory=datetime.utcnow)
+    joined_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -123,7 +123,7 @@ class DirectMessage:
     content: str
     is_encrypted: bool = True
     read_at: Optional[datetime] = None
-    created_at: datetime = field(default_factory=datetime.utcnow)
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -132,4 +132,4 @@ class Conversation:
     participant_1_id: str
     participant_2_id: str
     last_message_at: Optional[datetime] = None
-    created_at: datetime = field(default_factory=datetime.utcnow)
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))

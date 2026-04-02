@@ -1,3 +1,4 @@
+import logging
 import math
 from fastapi import (
     APIRouter,
@@ -20,6 +21,7 @@ from ...domain.ports.repository_ports import (
     UserRepositoryPort,
     TipRepositoryPort,
     CaptionRepositoryPort,
+    HashtagRepositoryPort,
 )
 from ...domain.ports.storage_port import StoragePort
 from ...infrastructure.repositories.sqlite_video_repo import SQLiteVideoRepository
@@ -27,6 +29,7 @@ from ...infrastructure.repositories.sqlite_user_repo import SQLiteUserRepository
 from ...infrastructure.repositories.sqlite_tip_repo import SQLiteTipRepository
 from ...infrastructure.repositories.sqlite_caption_repo import SQLiteCaptionRepository
 from ...infrastructure.adapters.storage_factory import get_storage_adapter
+from ...infrastructure.repositories.sqlite_hashtag_repo import SQLiteHashtagRepository
 from ...application.use_cases.upload_video import UploadVideoUseCase
 from ...application.use_cases.list_videos import ListVideosUseCase
 from ...application.use_cases.get_video_by_id import GetVideoByIdUseCase
@@ -54,6 +57,10 @@ from ...application.dtos.interaction_dto import CommentRequestDTO, CommentRespon
 
 def get_video_repo(session: Session = Depends(get_session)) -> VideoRepositoryPort:
     return SQLiteVideoRepository(session)
+
+
+def get_hashtag_repo(session: Session = Depends(get_session)) -> HashtagRepositoryPort:
+    return SQLiteHashtagRepository(session)
 
 
 def get_user_repo(session: Session = Depends(get_session)) -> UserRepositoryPort:
@@ -189,9 +196,9 @@ def validate_video_file(file: UploadFile) -> None:
 
     # Check file extension
     if file.filename:
-        import os as os_path
+        import os.path
 
-        _, ext = os_path.splitext(file.filename.lower())
+        _, ext = os.path.splitext(file.filename.lower())
         if ext not in ALLOWED_VIDEO_EXTENSIONS:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -223,6 +230,7 @@ def upload_video(
     current_user: Annotated[dict, Depends(get_current_user)],
     repo: VideoRepositoryPort = Depends(get_video_repo),
     storage: StoragePort = Depends(get_storage_adapter_dep),
+    hashtag_repo: HashtagRepositoryPort = Depends(get_hashtag_repo),
 ):
     # Validate the uploaded file
     validate_video_file(file)
@@ -232,7 +240,7 @@ def upload_video(
         title=title, description=description, creator_id=current_user["user_id"]
     )
 
-    use_case = UploadVideoUseCase(repo, storage)
+    use_case = UploadVideoUseCase(repo, storage, hashtag_repo)
     return use_case.execute(dto, file.file, file.filename)
 
 
@@ -264,7 +272,7 @@ def delete_video(
     video_id: str,
     current_user: Annotated[dict, Depends(get_current_user)],
     repo: VideoRepositoryPort = Depends(get_video_repo),
-    storage: StoragePort = Depends(get_storage_adapter),
+    storage: StoragePort = Depends(get_storage_adapter_dep),
 ):
     # Get video first to check ownership
     video = repo.get_by_id(video_id)

@@ -3,7 +3,7 @@ from typing import Optional
 from ...infrastructure.repositories.database import get_session
 from .auth_router import get_current_user
 from sqlmodel import Session, select
-from datetime import datetime
+from datetime import datetime, UTC
 import uuid
 
 router = APIRouter(prefix="/api/compliance", tags=["compliance"])
@@ -196,7 +196,7 @@ def record_consent(
 
     if existing:
         existing.granted = granted
-        existing.updated_at = datetime.utcnow()
+        existing.updated_at = datetime.now(UTC)
         session.add(existing)
     else:
         consent = ConsentRecordDB(
@@ -262,7 +262,7 @@ def withdraw_consent(
         raise HTTPException(status_code=404, detail="No consent record found for this type")
 
     consent.granted = False
-    consent.updated_at = datetime.utcnow()
+    consent.updated_at = datetime.now(UTC)
     session.add(consent)
     session.commit()
 
@@ -291,7 +291,7 @@ def verify_age(
         raise HTTPException(status_code=400, detail="Invalid date_of_birth format. Use ISO format.")
 
     # Calculate age
-    today = datetime.utcnow()
+    today = datetime.now(UTC)
     age = today.year - dob.year - ((today.month, today.day) < (dob.month, dob.day))
 
     is_minor = age < 13
@@ -368,7 +368,7 @@ def opt_out_data_sale(
 
     if existing:
         existing.granted = False
-        existing.updated_at = datetime.utcnow()
+        existing.updated_at = datetime.now(UTC)
         session.add(existing)
     else:
         consent = ConsentRecordDB(

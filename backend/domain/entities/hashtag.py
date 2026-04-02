@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field, replace
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import List, Optional
 import uuid
 
@@ -10,12 +10,12 @@ class Hashtag:
     name: str
     count: int = 0  # Number of times this hashtag has been used
     trending_score: float = 0.0  # Calculated trending score
-    created_at: datetime = field(default_factory=datetime.utcnow)
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     last_used_at: Optional[datetime] = None
 
     def increment_usage(self) -> "Hashtag":
         """Increment usage count and update last used timestamp."""
-        return replace(self, count=self.count + 1, last_used_at=datetime.utcnow())
+        return replace(self, count=self.count + 1, last_used_at=datetime.now(UTC))
 
     def update_trending_score(self, score: float) -> "Hashtag":
         """Update trending score based on recent activity."""

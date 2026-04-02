@@ -51,20 +51,20 @@ class SQLiteHashtagRepository(HashtagRepositoryPort):
 
     def update_hashtag_usage(self, hashtag_name: str) -> Optional[Hashtag]:
         """Increment usage count and last used timestamp."""
-        from datetime import datetime
+        from datetime import datetime, UTC
 
         hashtag_db = self.session.get(HashtagDB, hashtag_name)
         if not hashtag_db:
             # Create new hashtag
             new_hashtag = Hashtag(
-                name=hashtag_name, count=1, last_used_at=datetime.utcnow()
+                name=hashtag_name, count=1, last_used_at=datetime.now(UTC)
             )
             hashtag_db = HashtagDB.model_validate(new_hashtag)
             hashtag_db = self.session.merge(hashtag_db)
         else:
             # Update existing hashtag
             hashtag_db.count += 1
-            hashtag_db.last_used_at = datetime.utcnow()
+            hashtag_db.last_used_at = datetime.now(UTC)
             self.session.add(hashtag_db)
 
         self.session.commit()
@@ -89,9 +89,9 @@ class SQLiteHashtagRepository(HashtagRepositoryPort):
 
     def get_recent_hashtags(self, hours: int = 24, limit: int = 20) -> List[Hashtag]:
         """Get recently used hashtags."""
-        from datetime import datetime, timedelta
+        from datetime import datetime, timedelta, UTC
 
-        cutoff_time = datetime.utcnow() - timedelta(hours=hours)
+        cutoff_time = datetime.now(UTC) - timedelta(hours=hours)
         statement = (
             select(HashtagDB)
             .where(HashtagDB.last_used_at >= cutoff_time)

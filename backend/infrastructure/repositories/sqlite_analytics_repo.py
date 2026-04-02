@@ -1,6 +1,6 @@
 from typing import List, Optional, Dict, Any
 from sqlmodel import Session, select, and_, desc, func
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from ...domain.entities.analytics import (
     VideoAnalytics,
     CreatorAnalytics,
@@ -464,7 +464,7 @@ class SQLiteAnalyticsRepository(AnalyticsRepositoryPort):
         self, limit: int = 20, time_period: TimePeriod = TimePeriod.DAY
     ) -> List[VideoAnalytics]:
         # Calculate period start based on time period
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         if time_period == TimePeriod.DAY:
             period_start = now - timedelta(days=1)
         elif time_period == TimePeriod.WEEK:
@@ -486,7 +486,7 @@ class SQLiteAnalyticsRepository(AnalyticsRepositoryPort):
         self, limit: int = 20, time_period: TimePeriod = TimePeriod.WEEK
     ) -> List[CreatorAnalytics]:
         # Calculate period start based on time period
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         if time_period == TimePeriod.WEEK:
             period_start = now - timedelta(weeks=1)
         elif time_period == TimePeriod.MONTH:

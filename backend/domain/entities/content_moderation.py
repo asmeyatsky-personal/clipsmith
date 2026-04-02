@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field, replace
-from datetime import datetime
+from datetime import datetime, UTC
 from enum import Enum
 from typing import Optional, Dict, Any
 import uuid
@@ -61,7 +61,7 @@ class ContentModeration:
     human_reviewer_id: Optional[str] = None  # ID of human moderator
     human_notes: Optional[str] = None  # Human moderator notes
     auto_action: Optional[str] = None  # Action taken by AI (reject, approve, etc.)
-    created_at: datetime = field(default_factory=datetime.utcnow)
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     reviewed_at: Optional[datetime] = None
     completed_at: Optional[datetime] = None
 
@@ -74,8 +74,8 @@ class ContentModeration:
             status=ModerationStatus.APPROVED,
             human_reviewer_id=reviewer_id,
             human_notes=notes,
-            reviewed_at=datetime.utcnow(),
-            completed_at=datetime.utcnow(),
+            reviewed_at=datetime.now(UTC),
+            completed_at=datetime.now(UTC),
         )
 
     def reject(
@@ -93,14 +93,14 @@ class ContentModeration:
             reason=reason,
             severity=severity,
             human_notes=notes,
-            reviewed_at=datetime.utcnow(),
-            completed_at=datetime.utcnow(),
+            reviewed_at=datetime.now(UTC),
+            completed_at=datetime.now(UTC),
         )
 
     def escalate_to_human(self) -> "ContentModeration":
         """Escalate to human review."""
         return replace(
-            self, status=ModerationStatus.UNDER_REVIEW, reviewed_at=datetime.utcnow()
+            self, status=ModerationStatus.UNDER_REVIEW, reviewed_at=datetime.now(UTC)
         )
 
     def auto_approve(self, confidence: float = 1.0) -> "ContentModeration":
@@ -110,8 +110,8 @@ class ContentModeration:
             status=ModerationStatus.APPROVED,
             confidence_score=confidence,
             auto_action="auto_approve",
-            reviewed_at=datetime.utcnow(),
-            completed_at=datetime.utcnow(),
+            reviewed_at=datetime.now(UTC),
+            completed_at=datetime.now(UTC),
         )
 
     def auto_reject(
@@ -130,8 +130,8 @@ class ContentModeration:
             confidence_score=confidence,
             ai_labels=labels,
             auto_action=f"auto_reject_{reason.value}",
-            reviewed_at=datetime.utcnow(),
-            completed_at=datetime.utcnow(),
+            reviewed_at=datetime.now(UTC),
+            completed_at=datetime.now(UTC),
         )
 
     def flag_for_review(
@@ -144,5 +144,5 @@ class ContentModeration:
             confidence_score=confidence,
             ai_labels=labels,
             auto_action="flag_for_review",
-            reviewed_at=datetime.utcnow(),
+            reviewed_at=datetime.now(UTC),
         )

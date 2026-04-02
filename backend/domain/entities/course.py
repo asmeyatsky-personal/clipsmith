@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field, replace
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Optional, List
 import uuid
 
@@ -15,7 +15,7 @@ class Course:
     category: str = ""
     status: str = "draft"  # draft, published, archived
     enrollment_count: int = 0
-    created_at: datetime = field(default_factory=datetime.utcnow)
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -28,7 +28,7 @@ class CourseLesson:
     position: int = 0
     duration: float = 0.0  # In seconds
     is_free_preview: bool = False
-    created_at: datetime = field(default_factory=datetime.utcnow)
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -38,7 +38,7 @@ class CourseEnrollment:
     user_id: str
     status: str = "active"  # active, completed, cancelled
     progress_percentage: float = 0.0
-    enrolled_at: datetime = field(default_factory=datetime.utcnow)
+    enrolled_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     completed_at: Optional[datetime] = None
 
 
@@ -53,7 +53,7 @@ class SubscriptionTier:
     description: str = ""
     benefits: List[str] = field(default_factory=list)
     is_active: bool = True
-    created_at: datetime = field(default_factory=datetime.utcnow)
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
 
 @dataclass(frozen=True, kw_only=True)

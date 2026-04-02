@@ -3,7 +3,7 @@ from typing import Optional
 from ...infrastructure.repositories.database import get_session
 from .auth_router import get_current_user
 from sqlmodel import Session, select
-from datetime import datetime
+from datetime import datetime, UTC
 import uuid
 
 router = APIRouter(prefix="/api/courses", tags=["courses"])
@@ -308,7 +308,7 @@ def update_lesson_progress(
 
     if existing_progress:
         existing_progress.completed = True
-        existing_progress.completed_at = datetime.utcnow()
+        existing_progress.completed_at = datetime.now(UTC)
         session.add(existing_progress)
     else:
         progress = LessonProgressDB(
@@ -316,7 +316,7 @@ def update_lesson_progress(
             enrollment_id=enrollment.id,
             lesson_id=lesson_id,
             completed=True,
-            completed_at=datetime.utcnow(),
+            completed_at=datetime.now(UTC),
         )
         session.add(progress)
 

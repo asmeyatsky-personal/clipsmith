@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field, replace
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import Optional, Dict, Any
 from enum import Enum
 import uuid
@@ -50,7 +50,7 @@ class Transaction:
     description: Optional[str] = None
     reference_id: Optional[str] = None  # External reference (Stripe payment ID, etc.)
     metadata: Optional[Dict[str, Any]] = None
-    created_at: datetime = field(default_factory=lambda: datetime.utcnow())
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     updated_at: Optional[datetime] = None
     completed_at: Optional[datetime] = None
 
@@ -58,20 +58,20 @@ class Transaction:
         """Mark transaction as completed."""
         return replace(self,
             status=TransactionStatus.COMPLETED,
-            updated_at=datetime.utcnow(),
-            completed_at=datetime.utcnow(),
+            updated_at=datetime.now(UTC),
+            completed_at=datetime.now(UTC),
         )
 
     def fail(self) -> "Transaction":
         """Mark transaction as failed."""
         return replace(self,
-            status=TransactionStatus.FAILED, updated_at=datetime.utcnow()
+            status=TransactionStatus.FAILED, updated_at=datetime.now(UTC)
         )
 
     def refund(self) -> "Transaction":
         """Mark transaction as refunded."""
         return replace(self,
-            status=TransactionStatus.REFUNDED, updated_at=datetime.utcnow()
+            status=TransactionStatus.REFUNDED, updated_at=datetime.now(UTC)
         )
 
 
@@ -88,7 +88,7 @@ class CreatorWallet:
     stripe_account_id: Optional[str] = None  # Stripe Connect account ID
     payout_schedule: str = "monthly"  # weekly, biweekly, monthly
     minimum_payout: float = 10.0
-    created_at: datetime = field(default_factory=lambda: datetime.utcnow())
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     updated_at: Optional[datetime] = None
     last_payout_at: Optional[datetime] = None
 
@@ -97,7 +97,7 @@ class CreatorWallet:
         return replace(self,
             pending_balance=self.pending_balance + amount,
             total_earned=self.total_earned + amount,
-            updated_at=datetime.utcnow(),
+            updated_at=datetime.now(UTC),
         )
 
     def clear_funds(self, amount: float) -> "CreatorWallet":
@@ -105,7 +105,7 @@ class CreatorWallet:
         return replace(self,
             balance=self.balance + amount,
             pending_balance=self.pending_balance - amount,
-            updated_at=datetime.utcnow(),
+            updated_at=datetime.now(UTC),
         )
 
     def withdraw_funds(self, amount: float) -> "CreatorWallet":
@@ -113,17 +113,17 @@ class CreatorWallet:
         return replace(self,
             balance=self.balance - amount,
             total_withdrawn=self.total_withdrawn + amount,
-            updated_at=datetime.utcnow(),
-            last_payout_at=datetime.utcnow(),
+            updated_at=datetime.now(UTC),
+            last_payout_at=datetime.now(UTC),
         )
 
     def freeze(self) -> "CreatorWallet":
         """Freeze wallet."""
-        return replace(self,status=WalletStatus.FROZEN, updated_at=datetime.utcnow())
+        return replace(self,status=WalletStatus.FROZEN, updated_at=datetime.now(UTC))
 
     def activate(self) -> "CreatorWallet":
         """Activate wallet."""
-        return replace(self,status=WalletStatus.ACTIVE, updated_at=datetime.utcnow())
+        return replace(self,status=WalletStatus.ACTIVE, updated_at=datetime.now(UTC))
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -140,7 +140,7 @@ class Payout:
     net_amount: float  # Amount after fees
     description: Optional[str] = None
     metadata: Optional[Dict[str, Any]] = None
-    created_at: datetime = field(default_factory=lambda: datetime.utcnow())
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     updated_at: Optional[datetime] = None
     completed_at: Optional[datetime] = None
     failed_reason: Optional[str] = None
@@ -148,7 +148,7 @@ class Payout:
     def process(self) -> "Payout":
         """Mark payout as processing."""
         return replace(self,
-            status=PayoutStatus.PROCESSING, updated_at=datetime.utcnow()
+            status=PayoutStatus.PROCESSING, updated_at=datetime.now(UTC)
         )
 
     def complete(self, stripe_payout_id: str) -> "Payout":
@@ -156,8 +156,8 @@ class Payout:
         return replace(self,
             status=PayoutStatus.COMPLETED,
             stripe_payout_id=stripe_payout_id,
-            updated_at=datetime.utcnow(),
-            completed_at=datetime.utcnow(),
+            updated_at=datetime.now(UTC),
+            completed_at=datetime.now(UTC),
         )
 
     def fail(self, reason: str) -> "Payout":
@@ -165,7 +165,7 @@ class Payout:
         return replace(self,
             status=PayoutStatus.FAILED,
             failed_reason=reason,
-            updated_at=datetime.utcnow(),
+            updated_at=datetime.now(UTC),
         )
 
 
@@ -183,21 +183,21 @@ class Subscription:
     current_period_end: datetime
     cancelled_at: Optional[datetime] = None
     ended_at: Optional[datetime] = None
-    created_at: datetime = field(default_factory=lambda: datetime.utcnow())
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     updated_at: Optional[datetime] = None
 
     def cancel(self) -> "Subscription":
         """Cancel subscription."""
         return replace(self,
             status="cancelled",
-            cancelled_at=datetime.utcnow(),
-            updated_at=datetime.utcnow(),
+            cancelled_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
         )
 
     def renew(self, new_period_end: datetime) -> "Subscription":
         """Renew subscription."""
         return replace(self,
-            current_period_start=datetime.utcnow(),
+            current_period_start=datetime.now(UTC),
             current_period_end=new_period_end,
-            updated_at=datetime.utcnow(),
+            updated_at=datetime.now(UTC),
         )

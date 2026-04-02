@@ -1,5 +1,5 @@
 import logging
-from typing import Dict, Any, Optional
+from typing import Callable, Dict, Any, List, Optional
 from datetime import datetime
 from ...domain.entities.notification import Notification, NotificationType
 from ...domain.ports.repository_ports import (
@@ -10,6 +10,28 @@ from ...domain.ports.repository_ports import (
 
 logger = logging.getLogger(__name__)
 
+# Notification types that warrant an email to the user
+EMAIL_WORTHY_TYPES = {
+    NotificationType.TIP,
+    NotificationType.VIDEO_PROCESSED,
+    NotificationType.VIDEO_FAILED,
+    NotificationType.CAPTION_GENERATED,
+    NotificationType.SYSTEM_UPDATE,
+}
+
+# Registry for real-time push callbacks (e.g. WebSocket broadcast)
+_realtime_listeners: List[Callable[[Notification], None]] = []
+
+
+def register_realtime_listener(callback: Callable[[Notification], None]) -> None:
+    """Register a callback that will be invoked for every new notification.
+
+    This is the integration point for WebSocket / SSE push. At startup, the
+    WebSocket manager registers itself here so that notifications are pushed
+    to connected clients in real time.
+    """
+    _realtime_listeners.append(callback)
+
 
 class NotificationService:
     """Service for managing user notifications."""
@@ -19,10 +41,12 @@ class NotificationService:
         notification_repo: NotificationRepositoryPort,
         user_repo: UserRepositoryPort,
         video_repo: VideoRepositoryPort,
+        email_service=None,
     ):
         self.notification_repo = notification_repo
         self.user_repo = user_repo
         self.video_repo = video_repo
+        self.email_service = email_service
 
     def create_like_notification(
         self, video_id: str, liker_user_id: str, video_owner_id: str
@@ -200,23 +224,51 @@ class NotificationService:
         )
 
     def send_notification(self, notification: Notification) -> bool:
-        """Save notification to repository and trigger real-time delivery."""
+        """Save notification to repository and trigger real-time + email delivery."""
         try:
-            saved_notification = self.notification_repo.save(notification)
+            self.notification_repo.save(notification)
 
-            # Here you would trigger real-time delivery via WebSocket, Push notification, etc.
-            # For now, just log it
             logger.info(
                 f"Notification created for user {notification.user_id}: {notification.title}"
             )
 
-            # TODO: Add WebSocket push notification
-            # TODO: Add email notification for important types
+            # Push to connected WebSocket / SSE clients
+            for listener in _realtime_listeners:
+                try:
+                    listener(notification)
+                except Exception as ws_err:
+                    logger.warning("Real-time push failed: %s", ws_err)
+
+            # Send email for high-priority notification types
+            if (
+                self.email_service is not None
+                and notification.type in EMAIL_WORTHY_TYPES
+                and notification.user_id
+            ):
+                self._send_notification_email(notification)
 
             return True
         except Exception as e:
             logger.error(f"Error sending notification: {e}")
             return False
+
+    def _send_notification_email(self, notification: Notification) -> None:
+        """Send an email for important notification types."""
+        try:
+            if self.user_repo is None:
+                return
+            user = self.user_repo.get_by_id(notification.user_id)
+            if not user or not getattr(user, "email", None):
+                return
+
+            self.email_service.send_notification_email(
+                user_email=user.email,
+                user_name=user.username,
+                subject=notification.title,
+                message=notification.message,
+            )
+        except Exception as e:
+            logger.warning("Failed to send notification email: %s", e)
 
     def send_bulk_notifications(self, notifications: list[Notification]) -> int:
         """Send multiple notifications efficiently."""
