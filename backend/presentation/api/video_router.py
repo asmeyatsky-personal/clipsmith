@@ -42,6 +42,14 @@ from ...application.dtos.video_dto import (
 from ...application.dtos.tip_dto import TipCreateDTO, TipResponseDTO
 from ...application.dtos.caption_dto import CaptionResponseDTO
 from ...infrastructure.security.jwt_adapter import JWTAdapter
+from ...infrastructure.validation import (
+    TitleField,
+    DescriptionField,
+    CommentField,
+    MAX_TITLE_LENGTH,
+    MAX_DESCRIPTION_LENGTH,
+    MAX_COMMENT_LENGTH,
+)
 
 router = APIRouter(prefix="/videos", tags=["videos"])
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
@@ -224,18 +232,22 @@ def validate_video_file(file: UploadFile) -> None:
 
 @router.post("/", response_model=VideoResponseDTO)
 def upload_video(
-    title: Annotated[str, Form()],
-    description: Annotated[str, Form()],
+    title: Annotated[str, Form(min_length=1, max_length=MAX_TITLE_LENGTH)],
+    description: Annotated[str, Form(max_length=MAX_DESCRIPTION_LENGTH)],
     file: Annotated[UploadFile, File()],
     current_user: Annotated[dict, Depends(get_current_user)],
     repo: VideoRepositoryPort = Depends(get_video_repo),
     storage: StoragePort = Depends(get_storage_adapter_dep),
     hashtag_repo: HashtagRepositoryPort = Depends(get_hashtag_repo),
 ):
-    # Validate the uploaded file
+    try:
+        title = TitleField.validate(title)
+        description = DescriptionField.validate(description)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
     validate_video_file(file)
 
-    # DTO creation from form data
     dto = VideoCreateDTO(
         title=title, description=description, creator_id=current_user["user_id"]
     )
@@ -368,7 +380,12 @@ def add_comment(
     user_id = current_user["user_id"]
     username = current_user["username"]
 
-    comment = repo.add_comment(user_id, username, video_id, comment_data.content)
+    try:
+        content = CommentField.validate(comment_data.content)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+    comment = repo.add_comment(user_id, username, video_id, content)
 
     # Send notification for new comment
     try:
@@ -386,7 +403,7 @@ def add_comment(
             )
 
             notification = notification_service.create_comment_notification(
-                video_id, user_id, video.creator_id, comment_data.content
+                video_id, user_id, video.creator_id, content
             )
             notification_service.send_notification(notification)
     except Exception as e:

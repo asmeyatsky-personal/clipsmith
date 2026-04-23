@@ -1,33 +1,53 @@
-import os
 from datetime import datetime, timedelta, UTC
 from typing import Optional
-from jose import jwt, JWTError
+from jose import jwt, exceptions as jose_exceptions
 
-SECRET_KEY = os.getenv("JWT_SECRET_KEY")
-if not SECRET_KEY:
-    raise RuntimeError(
-        "JWT_SECRET_KEY environment variable is required. "
-        "Generate one with: python -c \"import secrets; print(secrets.token_urlsafe(64))\""
-    )
-ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
-ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("JWT_EXPIRE_MINUTES", "30"))
+_settings = None
+
+
+def _get_settings():
+    global _settings
+    if _settings is None:
+        from infrastructure.config import get_settings
+
+        _settings = get_settings()
+    return _settings
+
+
+def get_jwt_secret() -> str:
+    secret = _get_settings().jwt_secret_key
+    if not secret:
+        raise RuntimeError(
+            "JWT_SECRET_KEY environment variable is required. "
+            'Generate one with: python -c "import secrets; print(secrets.token_urlsafe(64))"'
+        )
+    return secret
+
 
 class JWTAdapter:
     @staticmethod
-    def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
+    def create_access_token(
+        data: dict, expires_delta: Optional[timedelta] = None
+    ) -> str:
+        settings = _get_settings()
         to_encode = data.copy()
         if expires_delta:
             expire = datetime.now(UTC) + expires_delta
         else:
-            expire = datetime.now(UTC) + timedelta(minutes=15)
+            expire = datetime.now(UTC) + timedelta(minutes=settings.jwt_expire_minutes)
         to_encode.update({"exp": expire})
-        encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+        encoded_jwt = jwt.encode(
+            to_encode, get_jwt_secret(), algorithm=settings.jwt_algorithm
+        )
         return encoded_jwt
 
     @staticmethod
     def verify_token(token: str) -> Optional[dict]:
         try:
-            payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+            settings = _get_settings()
+            payload = jwt.decode(
+                token, get_jwt_secret(), algorithms=[settings.jwt_algorithm]
+            )
             return payload
-        except JWTError:
+        except jose_exceptions.JWTError:
             return None

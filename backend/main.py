@@ -27,15 +27,23 @@ from .presentation.middleware.monitoring_middleware import (
     UserActivityMiddleware,
 )
 from .infrastructure.repositories.database import create_db_and_tables
+from .infrastructure.logging_config import RequestLoggingMiddleware, setup_logging
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
+from .infrastructure.config import get_settings
 import os
 
-# Rate limiter configuration
+settings = get_settings()
+
+if settings.is_production():
+    setup_logging("WARNING")
+else:
+    setup_logging("INFO")
+
 limiter = Limiter(key_func=get_remote_address, default_limits=["100/minute"])
 
 
@@ -66,8 +74,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 
 
 app.add_middleware(SecurityHeadersMiddleware)
-
-# Add monitoring middleware
+app.add_middleware(RequestLoggingMiddleware)
 app.add_middleware(MonitoringMiddleware)
 app.add_middleware(HealthCheckMiddleware)
 app.add_middleware(UserActivityMiddleware)
@@ -79,7 +86,7 @@ app.add_middleware(SlowAPIMiddleware)
 
 # CORS must be added last so it's the outermost middleware
 # This ensures CORS headers are added even on error responses
-ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000").split(",")
+ALLOWED_ORIGINS = settings.allowed_origins.split(",")
 
 app.add_middleware(
     CORSMiddleware,

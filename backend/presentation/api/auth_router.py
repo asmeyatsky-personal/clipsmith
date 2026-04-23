@@ -7,6 +7,11 @@ import secrets
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 from ...infrastructure.adapters.email_adapter import EmailPort, get_email_adapter
+from ...infrastructure.validation import (
+    validate_username,
+    validate_email,
+    validate_password,
+)
 
 limiter = Limiter(key_func=get_remote_address)
 from ...infrastructure.repositories.sqlite_user_repo import SQLiteUserRepository
@@ -88,6 +93,9 @@ def register(
     repo: UserRepositoryPort = Depends(get_user_repo),
 ):
     try:
+        dto.username = validate_username(dto.username)
+        dto.email = validate_email(dto.email)
+        dto.password = validate_password(dto.password)
         use_case = RegisterUserUseCase(repo)
         return use_case.execute(dto)
     except ValueError as e:
