@@ -2,9 +2,9 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { Heart, MessageCircle, Share2, Flag, Volume2, VolumeX, Pause, Plus, Settings as SettingsIcon, User as UserIcon } from 'lucide-react';
+import { Heart, MessageCircle, Share2, Flag, Volume2, VolumeX, Pause, Plus, Settings as SettingsIcon, User as UserIcon, DollarSign } from 'lucide-react';
 import { NotificationBell } from '@/components/notifications/notification-bell';
-import { apiClient } from '@/lib/api/client';
+import { apiClient, getBaseUrl } from '@/lib/api/client';
 import { interactionService } from '@/lib/api/interactions';
 import { videoService, type CaptionDTO } from '@/lib/api/video';
 import type { PaginatedVideoResponse, VideoResponseDTO } from '@/lib/types';
@@ -396,6 +396,34 @@ function FeedItem({
                     icon={<Share2 className="w-7 h-7" />}
                     label="Share"
                     onClick={onShare}
+                />
+                <ActionButton
+                    icon={<DollarSign className="w-6 h-6" />}
+                    label="Tip"
+                    onClick={async () => {
+                        const raw = window.prompt('Tip amount in USD?', '1.00');
+                        if (!raw) return;
+                        const amount = parseFloat(raw);
+                        if (!Number.isFinite(amount) || amount <= 0) {
+                            alert('Invalid amount');
+                            return;
+                        }
+                        try {
+                            const fd = new FormData();
+                            fd.append('creator_id', video.creator_id);
+                            fd.append('amount', String(amount));
+                            fd.append('video_id', video.id);
+                            const res = await fetch(`${getBaseUrl()}/api/payments/tip`, {
+                                method: 'POST',
+                                credentials: 'include',
+                                body: fd,
+                            });
+                            if (!res.ok) throw new Error(await res.text());
+                            alert('Thanks for the tip!');
+                        } catch (e) {
+                            alert(e instanceof Error ? e.message : 'Tip failed');
+                        }
+                    }}
                 />
                 <ActionButton
                     icon={<Flag className="w-6 h-6" />}

@@ -39,9 +39,9 @@ async def get_wallet(
     service: PaymentService = Depends(get_payment_service),
 ):
     """Get user's wallet information."""
-    wallet = await service.get_wallet(current_user["id"])
+    wallet = await service.get_wallet(current_user.id)
     if not wallet:
-        wallet = await service.create_wallet(current_user["id"])
+        wallet = await service.create_wallet(current_user.id)
 
     return {"success": True, "wallet": wallet}
 
@@ -52,7 +52,7 @@ async def get_wallet_summary(
     service: PaymentService = Depends(get_payment_service),
 ):
     """Get comprehensive wallet summary."""
-    summary = await service.get_wallet_summary(current_user["id"])
+    summary = await service.get_wallet_summary(current_user.id)
     return {"success": True, "summary": summary}
 
 
@@ -83,8 +83,8 @@ async def setup_stripe_connect(
     refresh_url = _validate_redirect_url(refresh_url)
 
     result = await service.setup_stripe_connect(
-        user_id=current_user["id"],
-        email=current_user.get("email", f"user_{current_user['id']}@example.com"),
+        user_id=current_user.id,
+        email=getattr(current_user, "email", f"user_{current_user['id']}@example.com"),
         return_url=return_url,
         refresh_url=refresh_url,
     )
@@ -105,14 +105,14 @@ async def create_tip(
     service: PaymentService = Depends(get_payment_service),
 ):
     """Create a tip transaction."""
-    if current_user["id"] == creator_id:
+    if current_user.id == creator_id:
         raise HTTPException(status_code=400, detail="Cannot tip yourself")
 
     if amount <= 0:
         raise HTTPException(status_code=400, detail="Amount must be positive")
 
     result = await service.create_tip_transaction(
-        sender_id=current_user["id"],
+        sender_id=current_user.id,
         receiver_id=creator_id,
         amount=amount,
         video_id=video_id,
@@ -137,7 +137,7 @@ async def get_transaction_history(
     trans_type = TransactionType(transaction_type) if transaction_type else None
 
     transactions = await service.get_transaction_history(
-        user_id=current_user["id"], limit=limit, transaction_type=trans_type
+        user_id=current_user.id, limit=limit, transaction_type=trans_type
     )
 
     return {"success": True, "transactions": transactions}
@@ -150,7 +150,7 @@ async def request_payout(
     service: PaymentService = Depends(get_payment_service),
 ):
     """Request a payout for available balance."""
-    result = await service.request_payout(current_user["id"])
+    result = await service.request_payout(current_user.id)
 
     if not result["success"]:
         raise HTTPException(status_code=400, detail=result["error"])
@@ -165,7 +165,7 @@ async def get_payout_history(
     service: PaymentService = Depends(get_payment_service),
 ):
     """Get user's payout history."""
-    payouts = await service.get_payout_history(current_user["id"], limit)
+    payouts = await service.get_payout_history(current_user.id, limit)
     return {"success": True, "payouts": payouts}
 
 
@@ -179,7 +179,7 @@ async def create_subscription(
     service: PaymentService = Depends(get_payment_service),
 ):
     """Create a subscription to a creator."""
-    if current_user["id"] == creator_id:
+    if current_user.id == creator_id:
         raise HTTPException(status_code=400, detail="Cannot subscribe to yourself")
 
     if amount <= 0:
@@ -191,7 +191,7 @@ async def create_subscription(
         )
 
     result = await service.create_subscription(
-        subscriber_id=current_user["id"],
+        subscriber_id=current_user.id,
         creator_id=creator_id,
         amount=amount,
         interval=interval,
@@ -211,7 +211,7 @@ async def cancel_subscription(
 ):
     """Cancel a subscription."""
     result = await service.cancel_subscription(
-        subscription_id=subscription_id, user_id=current_user["id"]
+        subscription_id=subscription_id, user_id=current_user.id
     )
 
     if not result["success"]:
@@ -226,7 +226,7 @@ async def get_user_subscriptions(
     service: PaymentService = Depends(get_payment_service),
 ):
     """Get user's active subscriptions."""
-    subscriptions = await service.get_user_subscriptions(current_user["id"])
+    subscriptions = await service.get_user_subscriptions(current_user.id)
     return {"success": True, "subscriptions": subscriptions}
 
 
@@ -237,7 +237,7 @@ async def get_creator_subscribers(
     service: PaymentService = Depends(get_payment_service),
 ):
     """Get creator's subscribers (creator only)."""
-    if current_user["id"] != creator_id:
+    if current_user.id != creator_id:
         raise HTTPException(status_code=403, detail="Access denied")
 
     subscribers = await service.get_creator_subscribers(creator_id)
@@ -253,7 +253,7 @@ async def get_creator_analytics(
     service: PaymentService = Depends(get_payment_service),
 ):
     """Get analytics for creator earnings."""
-    if current_user["id"] != creator_id:
+    if current_user.id != creator_id:
         raise HTTPException(status_code=403, detail="Access denied")
 
     if days <= 0 or days > 365:
@@ -649,7 +649,7 @@ async def create_premium_content(
     existing = session.exec(
         select(PremiumContentDB).where(
             PremiumContentDB.video_id == video_id,
-            PremiumContentDB.creator_id == current_user["id"],
+            PremiumContentDB.creator_id == current_user.id,
         )
     ).first()
 
@@ -659,7 +659,7 @@ async def create_premium_content(
         )
 
     premium = PremiumContentDB(
-        creator_id=current_user["id"],
+        creator_id=current_user.id,
         video_id=video_id,
         price=price,
         description=description,
@@ -708,7 +708,7 @@ async def purchase_premium_content(
 
     existing_purchase = session.exec(
         select(PremiumPurchaseDB).where(
-            PremiumPurchaseDB.user_id == current_user["id"],
+            PremiumPurchaseDB.user_id == current_user.id,
             PremiumPurchaseDB.premium_content_id == premium_content_id,
             PremiumPurchaseDB.status == "completed",
         )
@@ -718,7 +718,7 @@ async def purchase_premium_content(
         raise HTTPException(status_code=400, detail="Already purchased")
 
     purchase = PremiumPurchaseDB(
-        user_id=current_user["id"],
+        user_id=current_user.id,
         premium_content_id=premium_content_id,
         amount=premium.price,
     )
@@ -742,7 +742,7 @@ async def get_purchased_content(
 
     purchases = session.exec(
         select(PremiumPurchaseDB).where(
-            PremiumPurchaseDB.user_id == current_user["id"],
+            PremiumPurchaseDB.user_id == current_user.id,
             PremiumPurchaseDB.status == "completed",
         )
     ).all()
@@ -782,13 +782,13 @@ async def check_premium_access(
         return {"has_access": True, "is_premium": False}
 
     # Creator always has access
-    if premium.creator_id == current_user["id"]:
+    if premium.creator_id == current_user.id:
         return {"has_access": True, "is_premium": True, "reason": "creator"}
 
     # Check purchase
     purchase = session.exec(
         select(PremiumPurchaseDB).where(
-            PremiumPurchaseDB.user_id == current_user["id"],
+            PremiumPurchaseDB.user_id == current_user.id,
             PremiumPurchaseDB.premium_content_id == premium.id,
             PremiumPurchaseDB.status == "completed",
         )
@@ -800,7 +800,7 @@ async def check_premium_access(
     # Check active subscription to creator
     subscription = session.exec(
         select(SubscriptionDB).where(
-            SubscriptionDB.user_id == current_user["id"],
+            SubscriptionDB.user_id == current_user.id,
             SubscriptionDB.creator_id == premium.creator_id,
             SubscriptionDB.status == "active",
         )
@@ -876,14 +876,14 @@ async def create_brand_profile(
     body = await request.json()
 
     existing = session.exec(
-        select(BrandProfileDB).where(BrandProfileDB.user_id == current_user["id"])
+        select(BrandProfileDB).where(BrandProfileDB.user_id == current_user.id)
     ).first()
 
     if existing:
         raise HTTPException(status_code=400, detail="Brand profile already exists")
 
     brand = BrandProfileDB(
-        user_id=current_user["id"],
+        user_id=current_user.id,
         company_name=body.get("company_name"),
         industry=body.get("industry"),
         website=body.get("website"),
@@ -904,7 +904,7 @@ async def get_brand_profile(
     """Get brand profile."""
 
     brand = session.exec(
-        select(BrandProfileDB).where(BrandProfileDB.user_id == current_user["id"])
+        select(BrandProfileDB).where(BrandProfileDB.user_id == current_user.id)
     ).first()
 
     if not brand:
@@ -932,7 +932,7 @@ async def create_campaign(
     body = await request.json()
 
     campaign = BrandCampaignDB(
-        brand_id=current_user["id"],
+        brand_id=current_user.id,
         creator_id=body.get("creator_id"),
         title=body.get("title"),
         description=body.get("description"),
@@ -955,8 +955,8 @@ async def list_campaigns(
     """List campaigns."""
 
     query = select(BrandCampaignDB).where(
-        (BrandCampaignDB.brand_id == current_user["id"])
-        | (BrandCampaignDB.creator_id == current_user["id"])
+        (BrandCampaignDB.brand_id == current_user.id)
+        | (BrandCampaignDB.creator_id == current_user.id)
     )
 
     if status:
@@ -991,7 +991,7 @@ async def respond_to_campaign(
     if not campaign:
         raise HTTPException(status_code=404, detail="Campaign not found")
 
-    if campaign.creator_id != current_user["id"]:
+    if campaign.creator_id != current_user.id:
         raise HTTPException(status_code=403, detail="Access denied")
 
     campaign.status = "accepted" if accept else "rejected"
