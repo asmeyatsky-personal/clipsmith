@@ -51,6 +51,7 @@ from ...application.dtos.interaction_dto import CommentRequestDTO, CommentRespon
 from ..dependencies import db_models  # legacy ORM access
 from ..dependencies import SQLiteVideoRepository, SQLiteHashtagRepository, SQLiteInteractionRepository, SQLiteTipRepository, SQLiteCaptionRepository
 from ..dependencies import get_report_content_use_case as _report_content_use_case_dep
+from ..dependencies import get_upload_video_use_case as _get_upload_video_use_case
 from ..dependencies import JWTAdapter, SQLiteUserRepository
 from ..dependencies import get_session_for_router as get_session
 from ..dependencies import get_current_user
@@ -230,9 +231,7 @@ def upload_video(
     description: Annotated[str, Form(max_length=MAX_DESCRIPTION_LENGTH)],
     file: Annotated[UploadFile, File()],
     current_user: Annotated[dict, Depends(get_current_user)],
-    repo: VideoRepositoryPort = Depends(get_video_repo),
-    storage: StoragePort = Depends(get_storage_adapter_dep),
-    hashtag_repo: HashtagRepositoryPort = Depends(get_hashtag_repo),
+    use_case: UploadVideoUseCase = Depends(_get_upload_video_use_case),
 ):
     try:
         title = TitleField.validate(title)
@@ -246,7 +245,6 @@ def upload_video(
         title=title, description=description, creator_id=current_user["user_id"]
     )
 
-    use_case = UploadVideoUseCase(repo, storage, hashtag_repo)
     return use_case.execute(dto, file.file, file.filename)
 
 

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { Heart, MessageCircle, Share2, Flag, Volume2, VolumeX, Pause } from 'lucide-react';
+import { Heart, MessageCircle, Share2, Flag, Volume2, VolumeX, Pause, Plus } from 'lucide-react';
 import { apiClient } from '@/lib/api/client';
 import { interactionService } from '@/lib/api/interactions';
 import type { PaginatedVideoResponse, VideoResponseDTO } from '@/lib/types';
@@ -159,6 +159,17 @@ export function MobileVideoFeed({ initialFeedType = 'foryou' }: MobileVideoFeedP
                     </div>
                 )}
             </div>
+
+            {/* Floating record button */}
+            {user && (
+                <Link
+                    href="/record"
+                    className="absolute right-4 bottom-[max(env(safe-area-inset-bottom),20px)] z-30 w-14 h-14 rounded-full bg-gradient-to-br from-pink-500 via-red-500 to-yellow-400 flex items-center justify-center shadow-2xl"
+                    aria-label="New post"
+                >
+                    <Plus className="w-7 h-7 text-white" />
+                </Link>
+            )}
 
             {openComments && (
                 <CommentSheet
