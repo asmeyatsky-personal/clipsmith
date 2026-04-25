@@ -24,7 +24,18 @@ class RecommendationEngine:
 
         self.time_decay_hours = 24  # Content freshness window
         self.max_recommendations = 100
-        
+
+    @staticmethod
+    def _aware(dt):
+        """Coerce a naive datetime to UTC-aware. Postgres TIMESTAMP WITHOUT TZ
+        round-trips as naive; the recommender does arithmetic against
+        datetime.now(UTC), so we have to align."""
+        if dt is None:
+            return None
+        if dt.tzinfo is None:
+            return dt.replace(tzinfo=UTC)
+        return dt
+
     def calculate_user_interests(self, user_interactions: List[Dict]) -> Dict[str, float]:
         """Calculate user interest scores based on interaction history."""
         interests = defaultdict(float)
@@ -32,7 +43,7 @@ class RecommendationEngine:
         
         for interaction in user_interactions:
             # Calculate time decay
-            hours_ago = (current_time - interaction['created_at']).total_seconds() / 3600
+            hours_ago = (current_time - self._aware(interaction["created_at"])).total_seconds() / 3600
             time_decay = math.exp(-hours_ago / self.time_decay_hours)
             
             # Extract content features (hashtags, categories, etc.)
@@ -135,7 +146,7 @@ class RecommendationEngine:
                 score += similar_followers * 10.0
             
             # 4. Freshness score
-            hours_since_upload = (current_time - video.created_at).total_seconds() / 3600
+            hours_since_upload = (current_time - self._aware(video.created_at)).total_seconds() / 3600
             freshness_score = math.exp(-hours_since_upload / (24 * 7))  # 7-day decay
             score += freshness_score * 20.0  # 20% weight
             
@@ -164,7 +175,7 @@ class RecommendationEngine:
         # Filter recent interactions
         recent_interactions = [
             i for i in all_interactions 
-            if i['created_at'] > cutoff_time
+            if self._aware(i["created_at"]) > cutoff_time
         ]
         
         # Calculate trending scores
@@ -175,7 +186,7 @@ class RecommendationEngine:
             weight = self.decay_factors.get(interaction['interaction_type'], 1.0)
             
             # Apply time decay (more recent = higher score)
-            hours_ago = (current_time - interaction['created_at']).total_seconds() / 3600
+            hours_ago = (current_time - self._aware(interaction["created_at"])).total_seconds() / 3600
             time_multiplier = math.exp(-hours_ago / hours)
             
             video_scores[video_id] += weight * time_multiplier

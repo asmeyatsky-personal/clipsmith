@@ -22,19 +22,21 @@ logger = logging.getLogger(__name__)
 class NoopTextModerator(TextModerationPort):
     """Dev fallback. Flags only the most obvious slur tokens for safety."""
 
-    _BLATANT_TOKENS = {
-        # Minimal hard list to keep dev mode from being entirely permissive.
-        # Real moderation requires a real classifier.
-        "child porn",
-        "kill yourself",
+    # Map blatant dev-mode tokens to OpenAI-equivalent categories so the
+    # auto-reject pipeline behaves consistently with prod.
+    _BLATANT_TOKENS: dict[str, str] = {
+        "child porn": "sexual/minors",
+        "csam": "sexual/minors",
+        "kill yourself": "self-harm/instructions",
+        "shoot up": "violence/graphic",
     }
 
     def classify(self, text: str) -> ModerationVerdict:
         lowered = (text or "").lower()
-        for token in self._BLATANT_TOKENS:
+        for token, category in self._BLATANT_TOKENS.items():
             if token in lowered:
                 return ModerationVerdict(
-                    flagged=True, score=0.99, reasons=("inappropriate_content",)
+                    flagged=True, score=0.99, reasons=(category,)
                 )
         return ModerationVerdict(flagged=False, score=0.0, reasons=())
 

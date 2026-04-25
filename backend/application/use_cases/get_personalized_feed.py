@@ -1,6 +1,7 @@
 from typing import List, Optional, Set
 from datetime import datetime
 from ...domain.ports.repository_ports import (
+    FollowRepositoryPort,
     VideoRepositoryPort,
     InteractionRepositoryPort,
     UserRepositoryPort,
@@ -19,11 +20,13 @@ class GetPersonalizedFeedUseCase:
         interaction_repo: InteractionRepositoryPort,
         user_repo: UserRepositoryPort,
         user_block_repo: Optional[UserBlockRepositoryPort] = None,
+        follow_repo: Optional[FollowRepositoryPort] = None,
     ):
         self.video_repo = video_repo
         self.interaction_repo = interaction_repo
         self.user_repo = user_repo
         self.user_block_repo = user_block_repo
+        self.follow_repo = follow_repo
         self.recommendation_engine = RecommendationEngine()
 
     def _blocked_creator_ids(self, viewer_id: str) -> Set[str]:
@@ -66,10 +69,14 @@ class GetPersonalizedFeedUseCase:
                 limit=page_size,
             )
         else:
-            # Load shared data once for recommendation-based feeds
-            user_interactions = self.interaction_repo.get_user_interactions(user_id)
+            # Load shared data once for recommendation-based feeds.
+            # Some legacy interaction-repo methods may not exist on every
+            # implementation — fall back to empty lists for the recommender.
+            _get_user = getattr(self.interaction_repo, "get_user_interactions", None)
+            _get_all = getattr(self.interaction_repo, "get_all_interactions", None)
+            user_interactions = _get_user(user_id) if _get_user else []
             all_videos = self.video_repo.find_all(offset=0, limit=500)
-            all_interactions = self.interaction_repo.get_all_interactions(limit=5000)
+            all_interactions = _get_all(limit=5000) if _get_all else []
 
             if feed_type == "trending":
                 feed_videos = self.recommendation_engine.get_trending_videos(
@@ -113,6 +120,14 @@ class GetPersonalizedFeedUseCase:
         return 50  # We limit to 50 recommendations per user
 
     def _get_user_following(self, user_id: str) -> Set[str]:
-        """Get set of creator IDs that user follows."""
-        following_interactions = self.interaction_repo.get_user_following(user_id)
-        return set(interaction.target_user_id for interaction in following_interactions)
+        """Get set of creator IDs that user follows.
+
+        Prefer FollowRepositoryPort (canonical source of follow edges).
+        Fall back to interaction-style following if a repo isn't injected.
+        """
+        if self.follow_repo is not None:
+            return {f.followed_id for f in self.follow_repo.get_following(user_id)}
+        following = getattr(self.interaction_repo, "get_user_following", None)
+        if not following:
+            return set()
+        return {i.target_user_id for i in following(user_id)}

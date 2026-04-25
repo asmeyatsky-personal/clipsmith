@@ -9,9 +9,11 @@ from ...domain.ports.repository_ports import (
     UserRepositoryPort,
     VideoRepositoryPort,
 )
+from ...domain.ports.repository_ports import FollowRepositoryPort
 from ...domain.ports.security_port import JWTPort
 from ...domain.ports.user_block_port import UserBlockRepositoryPort
 from ..dependencies import (
+    get_follow_repo,
     get_interaction_repo,
     get_jwt,
     get_user_block_repo,
@@ -70,6 +72,7 @@ def get_feed(
     interaction_repo: InteractionRepositoryPort = Depends(get_interaction_repo),
     user_repo: UserRepositoryPort = Depends(get_user_repo),
     block_repo: UserBlockRepositoryPort = Depends(get_user_block_repo),
+    follow_repo: FollowRepositoryPort = Depends(get_follow_repo),
 ):
     valid = ["foryou", "following", "trending"]
     if feed_type not in valid:
@@ -82,7 +85,11 @@ def get_feed(
         feed_type = "trending"
 
     use_case = GetPersonalizedFeedUseCase(
-        video_repo, interaction_repo, user_repo, user_block_repo=block_repo
+        video_repo,
+        interaction_repo,
+        user_repo,
+        user_block_repo=block_repo,
+        follow_repo=follow_repo,
     )
 
     if current_user:

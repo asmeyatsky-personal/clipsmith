@@ -1,3 +1,4 @@
+from datetime import datetime
 from pydantic import BaseModel, field_validator
 from typing import List, Generic, TypeVar
 from ...domain.entities.video import VideoStatus
@@ -43,7 +44,10 @@ class VideoResponseDTO(BaseModel):
     views: int
     likes: int
     duration: float
-    created_at: str | None = None
+    # Pydantic 2 will accept either str or datetime here and serialize as ISO 8601.
+    created_at: datetime | None = None
+
+    model_config = {"json_encoders": {datetime: lambda v: v.isoformat()}}
 
 
 class PaginatedVideoResponseDTO(BaseModel):

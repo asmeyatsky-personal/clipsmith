@@ -1,3 +1,4 @@
+import json
 from typing import Dict, List, Optional
 from sqlmodel import Session, select, func, and_, desc
 from ...domain.entities.content_moderation import (
@@ -11,21 +12,56 @@ from .database import engine
 from .models import ContentModerationDB
 
 
+def _domain_to_db(m: ContentModeration) -> dict:
+    """Domain entity has ai_labels: dict; DB column is str (JSON)."""
+    payload = {
+        "id": m.id,
+        "content_type": m.content_type,
+        "content_id": m.content_id,
+        "user_id": m.user_id,
+        "reporter_id": m.reporter_id,
+        "status": m.status.value if hasattr(m.status, "value") else m.status,
+        "moderation_type": m.moderation_type.value if hasattr(m.moderation_type, "value") else m.moderation_type,
+        "severity": m.severity.value if hasattr(m.severity, "value") else m.severity,
+        "reason": m.reason.value if hasattr(m.reason, "value") else m.reason,
+        "confidence_score": m.confidence_score,
+        "ai_labels": json.dumps(m.ai_labels) if m.ai_labels is not None else None,
+        "human_reviewer_id": m.human_reviewer_id,
+        "human_notes": m.human_notes,
+        "auto_action": m.auto_action,
+        "created_at": m.created_at,
+        "reviewed_at": m.reviewed_at,
+        "completed_at": m.completed_at,
+    }
+    return payload
+
+
+def _db_to_domain(row: ContentModerationDB) -> ContentModeration:
+    raw = row.model_dump()
+    labels = raw.get("ai_labels")
+    if isinstance(labels, str):
+        try:
+            raw["ai_labels"] = json.loads(labels)
+        except Exception:
+            raw["ai_labels"] = None
+    return ContentModeration(**raw)
+
+
 class SQLiteContentModerationRepository(ContentModerationRepositoryPort):
     def __init__(self, session: Session):
         self.session = session
 
     def save(self, moderation: ContentModeration) -> ContentModeration:
-        moderation_db = ContentModerationDB.model_validate(moderation)
+        moderation_db = ContentModerationDB(**_domain_to_db(moderation))
         moderation_db = self.session.merge(moderation_db)
         self.session.commit()
         self.session.refresh(moderation_db)
-        return ContentModeration(**moderation_db.model_dump())
+        return _db_to_domain(moderation_db)
 
     def get_by_id(self, moderation_id: str) -> Optional[ContentModeration]:
         moderation_db = self.session.get(ContentModerationDB, moderation_id)
         if moderation_db:
-            return ContentModeration(**moderation_db.model_dump())
+            return _db_to_domain(moderation_db)
         return None
 
     def get_pending_moderations(self, limit: int = 50) -> List[ContentModeration]:

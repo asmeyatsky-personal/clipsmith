@@ -50,24 +50,43 @@ class SQLiteHashtagRepository(HashtagRepositoryPort):
         return [Hashtag(**h.model_dump()) for h in results]
 
     def update_hashtag_usage(self, hashtag_name: str) -> Optional[Hashtag]:
-        """Increment usage count and last used timestamp."""
+        """Increment usage count and last used timestamp.
+
+        HashtagDB primary key is `id` (UUID); the unique constraint is on
+        `name`. We must query by `name`, not via session.get which only
+        works for primary keys.
+        """
         from datetime import datetime, UTC
 
-        hashtag_db = self.session.get(HashtagDB, hashtag_name)
-        if not hashtag_db:
-            # Create new hashtag
+        stmt = select(HashtagDB).where(HashtagDB.name == hashtag_name)
+        hashtag_db = self.session.exec(stmt).first()
+
+        if hashtag_db is None:
+            # Insert new hashtag. Wrap in try/except so a concurrent insert
+            # from another worker doesn't blow up the request.
             new_hashtag = Hashtag(
                 name=hashtag_name, count=1, last_used_at=datetime.now(UTC)
             )
             hashtag_db = HashtagDB.model_validate(new_hashtag)
-            hashtag_db = self.session.merge(hashtag_db)
+            self.session.add(hashtag_db)
+            try:
+                self.session.commit()
+            except Exception:
+                # Another writer beat us — re-fetch and increment.
+                self.session.rollback()
+                hashtag_db = self.session.exec(stmt).first()
+                if hashtag_db is None:
+                    raise
+                hashtag_db.count += 1
+                hashtag_db.last_used_at = datetime.now(UTC)
+                self.session.add(hashtag_db)
+                self.session.commit()
         else:
-            # Update existing hashtag
             hashtag_db.count += 1
             hashtag_db.last_used_at = datetime.now(UTC)
             self.session.add(hashtag_db)
+            self.session.commit()
 
-        self.session.commit()
         self.session.refresh(hashtag_db)
         return Hashtag(**hashtag_db.model_dump())
 

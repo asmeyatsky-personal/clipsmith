@@ -351,11 +351,11 @@ def toggle_like(
     user_id = current_user["user_id"]
 
     # Check if already liked to determine if this is a new like or unlike
-    existing_like = repo.get_like(user_id, video_id)
+    was_already_liked = repo.has_user_liked(user_id, video_id)
     is_liked = repo.toggle_like(user_id, video_id)
 
     # Send notification for new likes only
-    if is_liked and not existing_like:
+    if is_liked and not was_already_liked:
         try:
             from ...application.services.notification_service import NotificationService
             from ...domain.entities.notification import NotificationType
