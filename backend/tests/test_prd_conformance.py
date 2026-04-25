@@ -737,7 +737,7 @@ class TestAPIEndpoints:
 
     def test_auth_routes_exist(self):
         """Auth routes should exist (may return 422 without body)."""
-        resp = self.client.post("/auth/register", json={})
+        resp = self.client.post("/auth/register", json={"date_of_birth": "2000-01-01"})
         # Should not be 404
         assert resp.status_code != 404
 

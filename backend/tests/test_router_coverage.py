@@ -19,7 +19,9 @@ def _register_and_login(client, username, email, password="securepassword123"):
     """Register a user and return (login_data_dict, auth_headers)."""
     client.post(
         "/auth/register",
-        json={"username": username, "email": email, "password": password},
+        json={"username": username, "email": email, "password": password,
+                "date_of_birth": "2000-01-01"
+            },
     )
     resp = client.post(
         "/auth/login",

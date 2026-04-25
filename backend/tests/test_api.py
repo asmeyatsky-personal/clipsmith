@@ -9,11 +9,14 @@ def auth_headers(client):
         "username": "testuser_api",
         "email": "testapi@example.com",
         "password": "securepassword123",
-    }
+            "date_of_birth": "2000-01-01"
+        }
     client.post("/auth/register", json=user_data)
     login_response = client.post(
         "/auth/login",
-        json={"email": "testapi@example.com", "password": "securepassword123"},
+        json={"email": "testapi@example.com", "password": "securepassword123",
+                "date_of_birth": "2000-01-01"
+            },
     )
     if login_response.status_code == 200:
         token = login_response.json().get("access_token", "")
@@ -51,6 +54,7 @@ class TestAuthAPI:
             "username": "testuser123",
             "email": "testregister@example.com",
             "password": "securepassword123",
+            "date_of_birth": "2000-01-01"
         }
 
         response = client.post("/auth/register", json=user_data)
@@ -62,7 +66,9 @@ class TestAuthAPI:
 
     def test_invalid_login(self, client):
         """Test invalid login credentials."""
-        login_data = {"email": "invalid@example.com", "password": "wrongpassword"}
+        login_data = {"email": "invalid@example.com", "password": "wrongpassword",
+                "date_of_birth": "2000-01-01"
+            }
 
         response = client.post("/auth/login", json=login_data)
 
@@ -169,6 +175,7 @@ class TestErrorHandling:
             "username": "",
             "email": "invalid-email",
             "password": "123",
+            "date_of_birth": "2000-01-01"
         }
 
         response = client.post("/auth/register", json=invalid_user)
@@ -188,7 +195,9 @@ class TestErrorHandling:
         for _ in range(5):
             response = client.post(
                 "/auth/login",
-                json={"email": "test@example.com", "password": "password"},
+                json={"email": "test@example.com", "password": "password",
+                "date_of_birth": "2000-01-01"
+            },
             )
             responses.append(response.status_code)
 
@@ -206,6 +215,7 @@ class TestIntegration:
             "username": "integration_user",
             "email": "integration@example.com",
             "password": "securepassword123",
+            "date_of_birth": "2000-01-01"
         }
 
         register_response = client.post("/auth/register", json=user_data)
@@ -217,6 +227,7 @@ class TestIntegration:
             json={
                 "email": "integration@example.com",
                 "password": "securepassword123",
+                "date_of_birth": "2000-01-01"
             },
         )
         assert login_response.status_code == 200

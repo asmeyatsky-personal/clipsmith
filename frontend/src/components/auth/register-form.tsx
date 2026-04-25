@@ -7,11 +7,30 @@ import Link from 'next/link';
 
 export function RegisterForm() {
     const router = useRouter();
-    const [formData, setFormData] = useState({ username: '', email: '', password: '' });
+    const [formData, setFormData] = useState({
+        username: '',
+        email: '',
+        password: '',
+        date_of_birth: '',
+    });
     const [error, setError] = useState('');
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        // Defense-in-depth: client-side age check (server is the source of truth).
+        if (!formData.date_of_birth) {
+            setError('Please provide your date of birth');
+            return;
+        }
+        const dob = new Date(formData.date_of_birth);
+        const today = new Date();
+        let age = today.getFullYear() - dob.getFullYear();
+        const m = today.getMonth() - dob.getMonth();
+        if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) age--;
+        if (age < 13) {
+            setError('You must be at least 13 to use Clipsmith.');
+            return;
+        }
         try {
             await apiClient('/auth/register', {
                 method: 'POST',
@@ -64,6 +83,37 @@ export function RegisterForm() {
                         required
                     />
                 </div>
+
+                <div>
+                    <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">
+                        Date of birth
+                    </label>
+                    <input
+                        type="date"
+                        max={new Date().toISOString().split('T')[0]}
+                        className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all dark:bg-zinc-800 dark:border-zinc-700"
+                        value={formData.date_of_birth}
+                        onChange={(e) =>
+                            setFormData({ ...formData, date_of_birth: e.target.value })
+                        }
+                        required
+                    />
+                    <p className="mt-1 text-xs text-gray-500">
+                        You must be at least 13 to sign up.
+                    </p>
+                </div>
+
+                <p className="text-xs text-gray-500">
+                    By creating an account you agree to our{' '}
+                    <Link href="/legal/terms" className="underline">
+                        Terms
+                    </Link>{' '}
+                    and{' '}
+                    <Link href="/legal/privacy" className="underline">
+                        Privacy Policy
+                    </Link>
+                    .
+                </p>
 
                 <button
                     type="submit"

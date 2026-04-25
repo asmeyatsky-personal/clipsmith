@@ -4,6 +4,7 @@ from backend.application.use_cases.authenticate_user import AuthenticateUserUseC
 from backend.application.dtos.auth_dto import RegisterRequestDTO, LoginRequestDTO
 from backend.domain.entities.user import User
 from backend.domain.ports.security_port import JWTPort, PasswordHelperPort
+from datetime import date
 
 
 class FakePasswordHelper(PasswordHelperPort):
@@ -39,7 +40,8 @@ class TestRegisterUserUseCase:
         dto = RegisterRequestDTO(
             username="testuser",
             email="test@example.com",
-            password="securepassword123"
+            password="securepassword123",
+            date_of_birth=date(2000, 1, 1)
         )
 
         result = use_case.execute(dto)
@@ -54,14 +56,16 @@ class TestRegisterUserUseCase:
         dto = RegisterRequestDTO(
             username="user1",
             email="duplicate@example.com",
-            password="password123"
+            password="password123",
+            date_of_birth=date(2000, 1, 1)
         )
         use_case.execute(dto)
 
         dto2 = RegisterRequestDTO(
             username="user2",
             email="duplicate@example.com",
-            password="password456"
+            password="password456",
+            date_of_birth=date(2000, 1, 1)
         )
 
         with pytest.raises(ValueError):
@@ -74,7 +78,8 @@ class TestAuthenticateUserUseCase:
         register_dto = RegisterRequestDTO(
             username="loginuser",
             email="login@example.com",
-            password="mypassword123"
+            password="mypassword123",
+            date_of_birth=date(2000, 1, 1)
         )
         register_use_case.execute(register_dto)
 
@@ -97,7 +102,8 @@ class TestAuthenticateUserUseCase:
         register_dto = RegisterRequestDTO(
             username="wrongpassuser",
             email="wrongpass@example.com",
-            password="correctpassword"
+            password="correctpassword",
+            date_of_birth=date(2000, 1, 1)
         )
         register_use_case.execute(register_dto)
 

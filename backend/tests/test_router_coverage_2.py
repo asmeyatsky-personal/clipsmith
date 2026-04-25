@@ -20,7 +20,9 @@ def _register_and_login(client, username, email, password="password123"):
     """Register a user and return auth headers + user id."""
     reg = client.post(
         "/auth/register",
-        json={"username": username, "email": email, "password": password},
+        json={"username": username, "email": email, "password": password,
+                "date_of_birth": "2000-01-01"
+            },
     )
     assert reg.status_code == 201, f"Registration failed: {reg.text}"
     user_id = reg.json()["id"]

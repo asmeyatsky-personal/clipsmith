@@ -22,7 +22,8 @@ class TestAuthAPI:
             json={
                 "username": "testuser",
                 "email": "test@example.com",
-                "password": "securepassword123"
+                "password": "securepassword123",
+                "date_of_birth": "2000-01-01"
             }
         )
         assert response.status_code == 201
@@ -38,7 +39,8 @@ class TestAuthAPI:
             json={
                 "username": "user1",
                 "email": "duplicate@example.com",
-                "password": "password123"
+                "password": "password123",
+                "date_of_birth": "2000-01-01"
             }
         )
 
@@ -48,7 +50,8 @@ class TestAuthAPI:
             json={
                 "username": "user2",
                 "email": "duplicate@example.com",
-                "password": "password456"
+                "password": "password456",
+                "date_of_birth": "2000-01-01"
             }
         )
         assert response.status_code == 400
@@ -60,7 +63,8 @@ class TestAuthAPI:
             json={
                 "username": "loginuser",
                 "email": "login@example.com",
-                "password": "mypassword123"
+                "password": "mypassword123",
+                "date_of_birth": "2000-01-01"
             }
         )
 
@@ -84,7 +88,8 @@ class TestAuthAPI:
             json={
                 "username": "wrongpassuser",
                 "email": "wrongpass@example.com",
-                "password": "correctpassword"
+                "password": "correctpassword",
+                "date_of_birth": "2000-01-01"
             }
         )
 
@@ -105,7 +110,8 @@ class TestAuthAPI:
             json={
                 "username": "meuser",
                 "email": "me@example.com",
-                "password": "password123"
+                "password": "password123",
+                "date_of_birth": "2000-01-01"
             }
         )
         login_response = client.post(
@@ -135,7 +141,8 @@ class TestAuthAPI:
             json={
                 "username": "resetuser",
                 "email": "reset@example.com",
-                "password": "oldpassword123"
+                "password": "oldpassword123",
+                "date_of_birth": "2000-01-01"
             }
         )
 
@@ -184,7 +191,8 @@ class TestUserAPI:
             json={
                 "username": username,
                 "email": email,
-                "password": "password123"
+                "password": "password123",
+                "date_of_birth": "2000-01-01"
             }
         )
         if reg_response.status_code != 201:

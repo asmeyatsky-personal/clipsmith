@@ -1,11 +1,17 @@
+from datetime import date, datetime
 from pydantic import BaseModel, EmailStr, field_validator
 from ..utils.sanitization import sanitize_input, MAX_USERNAME_LENGTH
+
+# Apple Guideline 1.3 + COPPA + GDPR: minimum age is 13 globally, 16 in EEA.
+# We enforce 13 here and surface a stricter regional gate at the client.
+_MIN_AGE_YEARS = 13
 
 
 class RegisterRequestDTO(BaseModel):
     username: str
     email: EmailStr
     password: str
+    date_of_birth: date  # required — see _MIN_AGE_YEARS
 
     @field_validator("username")
     @classmethod
@@ -17,6 +23,22 @@ class RegisterRequestDTO(BaseModel):
         if len(v) < 3:
             raise ValueError("Username must be at least 3 characters")
         return sanitize_input(v.strip())
+
+    @field_validator("date_of_birth")
+    @classmethod
+    def validate_dob(cls, v: date) -> date:
+        today = datetime.utcnow().date()
+        if v >= today:
+            raise ValueError("Date of birth must be in the past")
+        # Compute age (calendar years, accounting for not-yet-this-year birthday).
+        age = today.year - v.year - (
+            (today.month, today.day) < (v.month, v.day)
+        )
+        if age < _MIN_AGE_YEARS:
+            raise ValueError(
+                f"You must be at least {_MIN_AGE_YEARS} years old to use Clipsmith"
+            )
+        return v
 
 
 class LoginRequestDTO(BaseModel):
