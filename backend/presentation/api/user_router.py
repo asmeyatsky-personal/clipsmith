@@ -11,12 +11,17 @@ from ...domain.ports.repository_ports import (
     UserRepositoryPort,
     VideoRepositoryPort,
 )
+from ...application.use_cases.block_user import BlockUserUseCase, UnblockUserUseCase
 from ..dependencies import (
+    get_block_user_use_case,
     get_current_user as _resolve_current_user,
     get_follow_repo,
+    get_unblock_user_use_case,
+    get_user_block_repo,
     get_user_repo,
     get_video_repo,
 )
+from ...domain.ports.user_block_port import UserBlockRepositoryPort
 
 router = APIRouter(prefix="/users", tags=["users"])
 
@@ -73,3 +78,37 @@ def get_user_follow_status(
 ):
     use_case = ManageFollowsUseCase(user_repo, follow_repo)
     return use_case.get_follow_status(current_user["user_id"], user_id)
+
+
+# --- Block / unblock (Apple Guideline 1.2 — UGC apps must let users block) ---
+
+
+@router.post("/{user_id}/block", status_code=status.HTTP_201_CREATED)
+def block_user(
+    user_id: str,
+    current_user: Annotated[dict, Depends(get_current_user)],
+    use_case: BlockUserUseCase = Depends(get_block_user_use_case),
+):
+    try:
+        use_case.execute(blocker_id=current_user["user_id"], blocked_id=user_id)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return {"success": True, "blocked": user_id}
+
+
+@router.delete("/{user_id}/block", status_code=status.HTTP_204_NO_CONTENT)
+def unblock_user(
+    user_id: str,
+    current_user: Annotated[dict, Depends(get_current_user)],
+    use_case: UnblockUserUseCase = Depends(get_unblock_user_use_case),
+):
+    use_case.execute(blocker_id=current_user["user_id"], blocked_id=user_id)
+    return None
+
+
+@router.get("/blocks/list")
+def list_blocked_users(
+    current_user: Annotated[dict, Depends(get_current_user)],
+    repo: UserBlockRepositoryPort = Depends(get_user_block_repo),
+):
+    return {"blocked_user_ids": repo.list_blocked_ids(current_user["user_id"])}

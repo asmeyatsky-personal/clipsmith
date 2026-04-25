@@ -21,6 +21,7 @@ from ..application.use_cases.password_reset import (
     ConfirmPasswordResetUseCase,
     RequestPasswordResetUseCase,
 )
+from ..application.use_cases.block_user import BlockUserUseCase, UnblockUserUseCase
 from ..application.use_cases.report_content import ReportContentUseCase
 from ..application.use_cases.register_user import RegisterUserUseCase
 from ..application.use_cases.upload_video import UploadVideoUseCase
@@ -44,6 +45,7 @@ from ..domain.ports.audit_log_port import AuditLogPort
 from ..domain.ports.payment_repository_port import PaymentRepositoryPort
 from ..domain.ports.security_port import JWTPort, PasswordHelperPort
 from ..domain.ports.storage_port import StoragePort
+from ..domain.ports.user_block_port import UserBlockRepositoryPort
 from ..infrastructure.adapters.audit_log import SQLModelAuditLog
 from ..infrastructure.adapters.email_adapter import get_email_adapter
 from ..infrastructure.adapters.storage_factory import get_storage_adapter
@@ -90,6 +92,9 @@ from ..infrastructure.repositories.sqlite_notification_repo import (
     SQLiteNotificationRepository,
 )
 from ..infrastructure.repositories.sqlite_payment_repo import SQLitePaymentRepository
+from ..infrastructure.repositories.sqlite_user_block_repo import (
+    SQLiteUserBlockRepository,
+)
 from ..infrastructure.repositories.sqlite_user_repo import SQLiteUserRepository
 from ..infrastructure.repositories.sqlite_video_repo import SQLiteVideoRepository
 from ..infrastructure.security.jwt_adapter import JWTAdapter
@@ -156,6 +161,26 @@ def get_report_content_use_case(
     audit: AuditLogPort = Depends(get_audit_log),
 ) -> ReportContentUseCase:
     return ReportContentUseCase(moderation_repo, audit)
+
+
+def get_user_block_repo(
+    session: Session = Depends(get_session),
+) -> UserBlockRepositoryPort:
+    return SQLiteUserBlockRepository(session)
+
+
+def get_block_user_use_case(
+    repo: UserBlockRepositoryPort = Depends(get_user_block_repo),
+    audit: AuditLogPort = Depends(get_audit_log),
+) -> BlockUserUseCase:
+    return BlockUserUseCase(repo, audit)
+
+
+def get_unblock_user_use_case(
+    repo: UserBlockRepositoryPort = Depends(get_user_block_repo),
+    audit: AuditLogPort = Depends(get_audit_log),
+) -> UnblockUserUseCase:
+    return UnblockUserUseCase(repo, audit)
 
 
 # --- Legacy router providers (transitional) ---

@@ -269,6 +269,20 @@ function FeedItem({
     };
 
     const onReport = async () => {
+        const choice = window.prompt(
+            'Pick an action:\n  r = report this video\n  b = block @' + video.creator_id,
+        );
+        if (!choice) return;
+        if (choice.toLowerCase().startsWith('b')) {
+            if (!window.confirm(`Block @${video.creator_id}? You'll no longer see their content.`)) return;
+            try {
+                await apiClient(`/users/${video.creator_id}/block`, { method: 'POST' });
+                alert('User blocked.');
+            } catch {
+                alert('Could not block. Try again.');
+            }
+            return;
+        }
         const reason = window.prompt(
             'Why are you reporting this video?\n(spam, harmful, harassment, copyright, other)',
         );

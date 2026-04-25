@@ -74,6 +74,16 @@ class FollowDB(SQLModel, table=True):
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
+class UserBlockDB(SQLModel, table=True):
+    """A blocks B: A's feed/profile views must hide B's content; B can't
+    interact with A. Apple App Store Guideline 1.2.
+    """
+    __tablename__ = "user_block"
+    blocker_id: str = Field(primary_key=True, index=True)
+    blocked_id: str = Field(primary_key=True, index=True)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+
 class PasswordResetDB(SQLModel, table=True):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
     user_id: str = Field(index=True)

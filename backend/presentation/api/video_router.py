@@ -42,6 +42,11 @@ from ...application.dtos.video_dto import (
 )
 from ...application.dtos.tip_dto import TipCreateDTO, TipResponseDTO
 from ...application.dtos.caption_dto import CaptionResponseDTO
+from slowapi import Limiter
+from slowapi.util import get_remote_address
+
+_limiter = Limiter(key_func=get_remote_address)
+
 router = APIRouter(prefix="/videos", tags=["videos"])
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
@@ -226,7 +231,9 @@ def validate_video_file(file: UploadFile) -> None:
 
 
 @router.post("/", response_model=VideoResponseDTO)
+@_limiter.limit("10/hour")
 def upload_video(
+    request: Request,
     title: Annotated[str, Form(min_length=1, max_length=MAX_TITLE_LENGTH)],
     description: Annotated[str, Form(max_length=MAX_DESCRIPTION_LENGTH)],
     file: Annotated[UploadFile, File()],
