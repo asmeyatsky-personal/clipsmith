@@ -60,3 +60,6 @@ forbidden_modules =
     backend.infrastructure.repositories
     backend.infrastructure.adapters
     backend.infrastructure.services
+ignore_imports =
+    backend.presentation.dependencies -> backend.infrastructure.**
+    backend.main -> backend.infrastructure.**

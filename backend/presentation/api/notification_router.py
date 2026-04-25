@@ -1,61 +1,22 @@
 from typing import Annotated, List, Optional
-from fastapi import APIRouter, Depends, Query, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer
 
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+
+from ...application.services.notification_service import NotificationService
+from ...domain.entities.notification import NotificationStatus
 from ...domain.ports.repository_ports import (
     NotificationRepositoryPort,
     UserRepositoryPort,
     VideoRepositoryPort,
 )
-from ...infrastructure.repositories.sqlite_notification_repo import (
-    SQLiteNotificationRepository,
+from ..dependencies import (
+    get_current_user,
+    get_notification_repo,
+    get_user_repo,
+    get_video_repo,
 )
-from ...infrastructure.repositories.sqlite_user_repo import SQLiteUserRepository
-from ...infrastructure.repositories.sqlite_video_repo import SQLiteVideoRepository
-from ...application.services.notification_service import NotificationService
-from ...domain.entities.notification import NotificationStatus
-from ...infrastructure.security.jwt_adapter import JWTAdapter
 
 router = APIRouter(prefix="/notifications", tags=["notifications"])
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
-
-# Dependency Injection Helpers
-from ...infrastructure.repositories.database import get_session
-from sqlmodel import Session
-
-
-def get_notification_repo(
-    session: Session = Depends(get_session),
-) -> NotificationRepositoryPort:
-    return SQLiteNotificationRepository(session)
-
-
-def get_user_repo(session: Session = Depends(get_session)) -> UserRepositoryPort:
-    return SQLiteUserRepository(session)
-
-
-def get_video_repo(session: Session = Depends(get_session)) -> VideoRepositoryPort:
-    return SQLiteVideoRepository(session)
-
-
-def get_current_user(
-    token: Annotated[str, Depends(oauth2_scheme)],
-    user_repo: UserRepositoryPort = Depends(get_user_repo),
-):
-    payload = JWTAdapter.verify_token(token)
-    if not payload:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid authentication credentials",
-        )
-
-    user = user_repo.get_by_id(payload.get("user_id"))
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="User not found",
-        )
-    return user
 
 
 def get_notification_service(

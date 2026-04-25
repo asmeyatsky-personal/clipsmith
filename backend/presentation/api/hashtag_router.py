@@ -1,40 +1,18 @@
-from typing import Annotated, List
-from fastapi import APIRouter, Depends, Query, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer
+from typing import Annotated
 
-from ...domain.ports.repository_ports import HashtagRepositoryPort
-from ...infrastructure.repositories.sqlite_hashtag_repo import SQLiteHashtagRepository
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+
 from ...application.services.hashtag_service import HashtagService
-from ...infrastructure.security.jwt_adapter import JWTAdapter
+from ...domain.ports.repository_ports import HashtagRepositoryPort
+from ..dependencies import get_hashtag_repo
 
 router = APIRouter(prefix="/hashtags", tags=["hashtags"])
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
-
-# Dependency Injection Helpers
-from ...infrastructure.repositories.database import get_session
-from sqlmodel import Session
-
-
-def get_hashtag_repo(session: Session = Depends(get_session)) -> HashtagRepositoryPort:
-    return SQLiteHashtagRepository(session)
 
 
 def get_hashtag_service(
     hashtag_repo: HashtagRepositoryPort = Depends(get_hashtag_repo),
 ) -> HashtagService:
     return HashtagService(hashtag_repo)
-
-
-def get_current_user(
-    token: Annotated[str, Depends(oauth2_scheme)],
-):
-    payload = JWTAdapter.verify_token(token)
-    if not payload:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid authentication credentials",
-        )
-    return payload
 
 
 @router.get("/trending")

@@ -1,53 +1,26 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer
-from typing import Annotated # Ensure Annotated is imported
 
-from ...domain.ports.repository_ports import UserRepositoryPort, VideoRepositoryPort, FollowRepositoryPort
-from ...infrastructure.repositories.sqlite_user_repo import SQLiteUserRepository
-from ...infrastructure.repositories.sqlite_video_repo import SQLiteVideoRepository
-from ...infrastructure.repositories.sqlite_follow_repo import SQLiteFollowRepository
+from ...application.dtos.follow_dto import FollowResponseDTO, FollowStatusDTO
+from ...application.dtos.profile_dto import ProfileResponseDTO
 from ...application.use_cases.get_user_profile import GetUserProfileUseCase
 from ...application.use_cases.manage_follows import ManageFollowsUseCase
-from ...application.dtos.profile_dto import ProfileResponseDTO
-from ...application.dtos.follow_dto import FollowResponseDTO, FollowStatusDTO
-from ...infrastructure.security.jwt_adapter import JWTAdapter # For get_current_user
+from ...domain.ports.repository_ports import (
+    FollowRepositoryPort,
+    UserRepositoryPort,
+    VideoRepositoryPort,
+)
+from ..dependencies import (
+    get_current_user as _resolve_current_user,
+    get_follow_repo,
+    get_user_repo,
+    get_video_repo,
+)
 
 router = APIRouter(prefix="/users", tags=["users"])
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
-# Dependency Injection Helpers
-from ...infrastructure.repositories.database import get_session
-from sqlmodel import Session
 
-def get_user_repo(session: Session = Depends(get_session)) -> UserRepositoryPort:
-    return SQLiteUserRepository(session)
-
-def get_video_repo(session: Session = Depends(get_session)) -> VideoRepositoryPort:
-    return SQLiteVideoRepository(session)
-
-def get_follow_repo(session: Session = Depends(get_session)) -> FollowRepositoryPort:
-    return SQLiteFollowRepository(session)
-
-def get_current_user(
-    token: Annotated[str, Depends(oauth2_scheme)],
-    user_repo: UserRepositoryPort = Depends(get_user_repo)
-):
-    payload = JWTAdapter.verify_token(token)
-    if not payload:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid authentication credentials",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    user_id = payload.get("user_id")
-    if not user_id:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User ID not found in token")
-
-    user = user_repo.get_by_id(user_id)
-    if not user:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
-
-    return {"user_id": user.id, "username": user.username} # Return dict for consistency with video_router
+def get_current_user(user=Depends(_resolve_current_user)):
+    return {"user_id": user.id, "username": user.username}
 
 @router.get("/{username}", response_model=ProfileResponseDTO)
 def get_user_profile(

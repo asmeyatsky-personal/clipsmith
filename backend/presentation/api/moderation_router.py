@@ -1,35 +1,24 @@
-from typing import Annotated, List, Optional
-from fastapi import APIRouter, Depends, Query, HTTPException, status, Body
-from fastapi.security import OAuth2PasswordBearer
+from typing import List, Optional
+
+from fastapi import APIRouter, Body, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 
-from ...domain.ports.repository_ports import ContentModerationRepositoryPort
-from ...infrastructure.repositories.sqlite_content_moderation_repo import (
-    SQLiteContentModerationRepository,
-)
 from ...application.services.content_moderation_service import (
     AIModerationService,
     HumanModerationService,
 )
 from ...domain.entities.content_moderation import (
-    ModerationStatus,
-    ModerationSeverity,
     ModerationReason,
+    ModerationSeverity,
+    ModerationStatus,
 )
-from ...infrastructure.security.jwt_adapter import JWTAdapter
+from ...domain.ports.repository_ports import ContentModerationRepositoryPort
+from ..dependencies import (
+    get_content_moderation_repo as get_moderation_repo,
+    get_current_user,
+)
 
 router = APIRouter(prefix="/moderation", tags=["moderation"])
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
-
-# Dependency Injection Helpers
-from ...infrastructure.repositories.database import get_session
-from sqlmodel import Session
-
-
-def get_moderation_repo(
-    session: Session = Depends(get_session),
-) -> ContentModerationRepositoryPort:
-    return SQLiteContentModerationRepository(session)
 
 
 def get_ai_moderation_service(
@@ -42,18 +31,6 @@ def get_human_moderation_service(
     moderation_repo: ContentModerationRepositoryPort = Depends(get_moderation_repo),
 ) -> HumanModerationService:
     return HumanModerationService(moderation_repo)
-
-
-def get_current_user(
-    token: Annotated[str, Depends(oauth2_scheme)],
-):
-    payload = JWTAdapter.verify_token(token)
-    if not payload:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid authentication credentials",
-        )
-    return payload
 
 
 def require_moderator_role(current_user: dict = None):

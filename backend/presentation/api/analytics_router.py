@@ -1,21 +1,19 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from datetime import UTC, datetime, timedelta
 from typing import List, Optional
+
+from fastapi import APIRouter, Depends, HTTPException, Query
+
 from ...application.services.analytics_service import AnalyticsService
-from ...infrastructure.repositories.sqlite_analytics_repo import (
-    SQLiteAnalyticsRepository,
-)
-from ...infrastructure.repositories.database import get_session
-from .auth_router import get_current_user
-from ...domain.entities.analytics import MetricType, TimePeriod, ContentType
-from sqlmodel import Session
-from datetime import datetime, timedelta, UTC
+from ...domain.entities.analytics import ContentType, MetricType, TimePeriod
+from ...domain.ports.analytics_repository_port import AnalyticsRepositoryPort
+from ..dependencies import get_analytics_repo, get_current_user
 
 router = APIRouter(prefix="/api/analytics", tags=["analytics"])
 
 
-def get_analytics_service(session: Session = Depends(get_session)) -> AnalyticsService:
-    """Dependency injection for analytics service."""
-    repository = SQLiteAnalyticsRepository(session)
+def get_analytics_service(
+    repository: AnalyticsRepositoryPort = Depends(get_analytics_repo),
+) -> AnalyticsService:
     return AnalyticsService(repository)
 
 
@@ -34,7 +32,7 @@ async def track_video_event(
     service: AnalyticsService = Depends(get_analytics_service),
 ):
     """Track video events (views, engagement, etc.)."""
-    user_id = current_user["id"] if current_user else None
+    user_id = current_user.id if current_user else None
 
     if event_type == "view":
         result = await service.track_video_view(
@@ -88,7 +86,7 @@ async def get_user_video_analytics(
 ):
     """Get analytics for user's videos."""
     analytics = service.repository.get_user_video_analytics(
-        current_user["id"], limit, period_start, period_end
+        current_user.id, limit, period_start, period_end
     )
     return {"success": True, "analytics": analytics}
 
@@ -105,7 +103,7 @@ async def get_top_performing_videos(
 ):
     """Get user's top performing videos."""
     top_videos = service.repository.get_top_performing_videos(
-        current_user["id"], limit, metric
+        current_user.id, limit, metric
     )
     return {"success": True, "top_videos": top_videos}
 
@@ -117,7 +115,7 @@ async def get_creator_dashboard(
     service: AnalyticsService = Depends(get_analytics_service),
 ):
     """Get comprehensive creator dashboard."""
-    dashboard = await service.get_creator_dashboard(current_user["id"])
+    dashboard = await service.get_creator_dashboard(current_user.id)
 
     if not dashboard["success"]:
         raise HTTPException(
@@ -141,7 +139,7 @@ async def get_creator_analytics(
         raise HTTPException(status_code=400, detail="Invalid time period")
 
     analytics = await service.generate_creator_analytics(
-        current_user["id"], time_period
+        current_user.id, time_period
     )
 
     if not analytics["success"]:
@@ -161,7 +159,7 @@ async def get_analytics_history(
 ):
     """Get historical creator analytics."""
     history = service.repository.get_creator_analytics_history(
-        current_user["id"], limit
+        current_user.id, limit
     )
     return {"success": True, "history": history}
 
@@ -182,7 +180,7 @@ async def get_time_series_data(
         raise HTTPException(status_code=400, detail="Invalid metric or time period")
 
     time_series = await service.generate_time_series_data(
-        current_user["id"], metric_type, period
+        current_user.id, metric_type, period
     )
 
     if not time_series["success"]:
@@ -204,7 +202,7 @@ async def get_audience_demographics(
 ):
     """Get audience demographics."""
     demographics = service.repository.get_audience_demographics(
-        current_user["id"], period_start, period_end
+        current_user.id, period_start, period_end
     )
     return {"success": True, "demographics": demographics}
 
@@ -217,7 +215,7 @@ async def update_audience_demographics(
 ):
     """Update audience demographics data."""
     result = await service.update_audience_demographics(
-        current_user["id"], demographics_data
+        current_user.id, demographics_data
     )
 
     if not result["success"]:
@@ -251,7 +249,7 @@ async def get_user_content_performance(
     content_type_enum = ContentType(content_type) if content_type else None
 
     performance = service.repository.get_user_content_performance(
-        current_user["id"], limit, content_type_enum
+        current_user.id, limit, content_type_enum
     )
     return {"success": True, "performance": performance}
 
@@ -312,7 +310,7 @@ async def get_daily_analytics(
     service: AnalyticsService = Depends(get_analytics_service),
 ):
     """Get daily aggregated analytics."""
-    daily_data = service.repository.aggregate_daily_analytics(current_user["id"], date)
+    daily_data = service.repository.aggregate_daily_analytics(current_user.id, date)
     return {"success": True, "daily_analytics": daily_data}
 
 
@@ -324,7 +322,7 @@ async def get_weekly_analytics(
 ):
     """Get weekly aggregated analytics."""
     weekly_data = service.repository.aggregate_weekly_analytics(
-        current_user["id"], week_start
+        current_user.id, week_start
     )
     return {"success": True, "weekly_analytics": weekly_data}
 
@@ -337,7 +335,7 @@ async def get_monthly_analytics(
 ):
     """Get monthly aggregated analytics."""
     monthly_data = service.repository.aggregate_monthly_analytics(
-        current_user["id"], month
+        current_user.id, month
     )
     return {"success": True, "monthly_analytics": monthly_data}
 
@@ -372,7 +370,7 @@ async def get_metrics_summary(
         period_end = period_end.replace(day=1) - timedelta(seconds=1)
 
     summary = service.repository.get_metrics_summary(
-        current_user["id"], metric_list, period, period_start, period_end
+        current_user.id, metric_list, period, period_start, period_end
     )
 
     return {"success": True, "metrics": summary}

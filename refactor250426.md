@@ -368,3 +368,49 @@ Estimated effort: ~3 days, 1–2 hours per router. Not done in this session.
 | 0.12 Frontend Next.js static export + ESLint boundaries | ⬜ Not started |
 
 **Realistic remaining Phase 0 effort: ~10–15 dev-days.** Router refactor is the long pole at ~3 days alone.
+
+### 2026-04-26 (cont 2) — Phase 0.2 router refactor batch 1
+
+**8 routers fully refactored** to call use cases via DI (no direct infrastructure imports):
+- `auth_router.py` — register, login, logout, me, password-reset (request/confirm), 2FA (status/setup/verify/disable/login-verify) — all via use cases
+- `feed_router.py` — feed, trending, categories, recommended, category feed
+- `user_router.py` — profile, follows
+- `hashtag_router.py` — trending, popular, search, recent, details
+- `notification_router.py` — list, mark-read, etc.
+- `moderation_router.py` — AI/human moderation flow
+- `analytics_router.py` — creator dashboards, time series, demographics
+- `two_factor_router.py` — duplicate 2FA endpoints (legacy frontend path)
+
+**New ports added to domain:**
+- `auth_security_port.py` — `PasswordResetRepositoryPort`, `TwoFactorRepositoryPort` + `PasswordResetRecord`, `TwoFactorRecord` value objects
+- `email_port.py` — `EmailSenderPort`
+
+**New adapters:**
+- `infrastructure/repositories/sqlite_auth_security_repo.py` — `SQLitePasswordResetRepository`, `SQLiteTwoFactorRepository`
+- `infrastructure/adapters/email_adapter.py` — `SMTPEmailAdapter`, `ConsoleEmailAdapter` now implement `EmailSenderPort` (kept legacy `send_email` method as alias)
+
+**New use cases:**
+- `application/use_cases/password_reset.py` — `RequestPasswordResetUseCase`, `ConfirmPasswordResetUseCase`
+- `application/use_cases/manage_2fa.py` — `GetTwoFactorStatusUseCase`, `SetupTwoFactorUseCase`, `VerifyTwoFactorSetupUseCase`, `DisableTwoFactorUseCase`, `VerifyLoginTwoFactorUseCase`
+
+**Composition root:**
+- `presentation/dependencies.py` — single FastAPI DI module wiring all ports/use cases. Exempt from the linter contract via `ignore_imports`.
+
+### Routers still pending refactor (Phase 0.2 backlog)
+
+| Router | Why deferred |
+|---|---|
+| `video_router.py` | Imports `infrastructure.queue.tasks.generate_captions_task` + `get_video_queue` directly; ~470 lines, multiple endpoints with FFmpeg/storage interaction |
+| `ai_router.py` | Direct `models.*` access (placeholder endpoints) |
+| `payment_router.py` | Direct `models.*` access for refund/subscription rows |
+| `community_router.py` | ~600 lines of inline CRUD on `models.*` (no service abstraction) |
+| `compliance_router.py` | Inline CRUD; GDPR endpoints |
+| `course_router.py` | Inline CRUD |
+| `discovery_router.py` | Inline CRUD |
+| `engagement_router.py` | Inline CRUD |
+| `social_router.py` | Inline CRUD |
+| `video_editor_router.py` | ~1000 lines of inline CRUD |
+
+These all share the same anti-pattern: routers do raw `session.exec(select(SomeDB)...)`. Fixing them requires extracting use cases per endpoint plus a service layer that translates ORM rows to domain entities. ~2–3 days each for the larger ones.
+
+**Recommended approach:** rather than refactor each router individually, build the `*_service.py` files (already moved to `infrastructure/services/`) into proper application services that take repository ports and return domain entities. Then routers can call services through application use cases. This is structural work that pays off once.

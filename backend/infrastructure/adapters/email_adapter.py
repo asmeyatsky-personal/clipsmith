@@ -1,17 +1,15 @@
 import os
 import smtplib
-from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-from abc import ABC, abstractmethod
+from email.mime.text import MIMEText
+
+from backend.domain.ports.email_port import EmailSenderPort
+
+# Backwards-compat alias — older code imports `EmailPort` from here.
+EmailPort = EmailSenderPort
 
 
-class EmailPort(ABC):
-    @abstractmethod
-    def send_email(self, to: str, subject: str, body: str, html_body: str | None = None) -> bool:
-        pass
-
-
-class SMTPEmailAdapter(EmailPort):
+class SMTPEmailAdapter(EmailSenderPort):
     """SMTP-based email adapter for sending emails."""
 
     def __init__(self):
@@ -22,23 +20,20 @@ class SMTPEmailAdapter(EmailPort):
         self.from_email = os.getenv("FROM_EMAIL", "noreply@clipsmith.com")
         self.use_tls = os.getenv("SMTP_USE_TLS", "true").lower() == "true"
 
-    def send_email(self, to: str, subject: str, body: str, html_body: str | None = None) -> bool:
-        """Send an email via SMTP."""
+    def send(
+        self, to: str, subject: str, body: str, html_body: str | None = None
+    ) -> bool:
         if not self.smtp_user or not self.smtp_password:
             print(f"[EMAIL] SMTP not configured. Would send to {to}: {subject}")
             print(f"[EMAIL] Body: {body}")
-            return True  # Return True in dev mode so flow continues
+            return True
 
         try:
             msg = MIMEMultipart("alternative")
             msg["Subject"] = subject
             msg["From"] = self.from_email
             msg["To"] = to
-
-            # Attach plain text version
             msg.attach(MIMEText(body, "plain"))
-
-            # Attach HTML version if provided
             if html_body:
                 msg.attach(MIMEText(html_body, "html"))
 
@@ -48,19 +43,24 @@ class SMTPEmailAdapter(EmailPort):
                 if self.smtp_user and self.smtp_password:
                     server.login(self.smtp_user, self.smtp_password)
                 server.sendmail(self.from_email, to, msg.as_string())
-
-            print(f"[EMAIL] Successfully sent email to {to}")
             return True
         except Exception as e:
             print(f"[EMAIL] Failed to send email to {to}: {e}")
             return False
 
+    # Backwards-compat
+    def send_email(
+        self, to: str, subject: str, body: str, html_body: str | None = None
+    ) -> bool:
+        return self.send(to, subject, body, html_body)
 
-class ConsoleEmailAdapter(EmailPort):
+
+class ConsoleEmailAdapter(EmailSenderPort):
     """Console-based email adapter for development/testing."""
 
-    def send_email(self, to: str, subject: str, body: str, html_body: str | None = None) -> bool:
-        """Log email to console instead of sending."""
+    def send(
+        self, to: str, subject: str, body: str, html_body: str | None = None
+    ) -> bool:
         print("=" * 60)
         print(f"[DEV EMAIL] To: {to}")
         print(f"[DEV EMAIL] Subject: {subject}")
@@ -70,9 +70,13 @@ class ConsoleEmailAdapter(EmailPort):
         print("=" * 60)
         return True
 
+    def send_email(
+        self, to: str, subject: str, body: str, html_body: str | None = None
+    ) -> bool:
+        return self.send(to, subject, body, html_body)
 
-def get_email_adapter() -> EmailPort:
-    """Factory function to get the appropriate email adapter based on environment."""
+
+def get_email_adapter() -> EmailSenderPort:
     if os.getenv("SMTP_HOST") and os.getenv("SMTP_USER"):
         return SMTPEmailAdapter()
     return ConsoleEmailAdapter()
