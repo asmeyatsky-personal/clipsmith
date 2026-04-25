@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useParams } from 'next/navigation'; // Correct hook for App Router params
+import { Suspense, useEffect, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { userService } from '@/lib/api/user';
 import { ProfileResponse } from '@/lib/types';
 import { ProfileHeader } from '@/components/profile/profile-header';
@@ -9,9 +9,9 @@ import { VideoCard } from '@/components/video/video-card';
 import { Loader2, AlertCircle } from 'lucide-react';
 import Link from 'next/link';
 
-export default function ProfilePage() {
-    const params = useParams();
-    const username = params.username as string; // Next.js params can be string or string[]
+function ProfilePageInner() {
+    const searchParams = useSearchParams();
+    const username = searchParams.get('u') ?? '';
 
     const [profile, setProfile] = useState<ProfileResponse | null>(null);
     const [loading, setLoading] = useState(true);
@@ -19,7 +19,11 @@ export default function ProfilePage() {
 
     useEffect(() => {
         const fetchProfile = async () => {
-            if (!username) return;
+            if (!username) {
+                setLoading(false);
+                setError('No username specified');
+                return;
+            }
             try {
                 setLoading(true);
                 const data = await userService.getProfile(username);
@@ -62,7 +66,6 @@ export default function ProfilePage() {
     return (
         <div className="min-h-screen bg-gray-50 dark:bg-zinc-950 pb-20 pt-20">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                {/* Back Button */}
                 <Link href="/" className="inline-block mb-6 text-gray-500 hover:text-gray-900 dark:hover:text-gray-100 font-medium">
                     &larr; Back to Feed
                 </Link>
@@ -87,5 +90,13 @@ export default function ProfilePage() {
                 )}
             </div>
         </div>
+    );
+}
+
+export default function ProfilePage() {
+    return (
+        <Suspense fallback={<div className="flex justify-center items-center h-screen"><Loader2 className="animate-spin text-blue-500" size={48} /></div>}>
+            <ProfilePageInner />
+        </Suspense>
     );
 }

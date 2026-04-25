@@ -1,16 +1,15 @@
 'use client';
 
-import { useParams } from 'next/navigation';
-import { Layers, Scissors, Music, Type, Subtitles, Palette, Volume2, Camera, Gauge } from 'lucide-react';
+import { useSearchParams, useRouter } from 'next/navigation';
+import { Layers, Scissors, Music, Type, Subtitles, Palette, Volume2, Camera, Gauge, Loader2 } from 'lucide-react';
 import { Timeline } from '@/components/editor/timeline';
-import { useEffect, useState, useRef, useMemo } from 'react';
+import { Suspense, useEffect, useState, useRef, useMemo } from 'react';
 import { videoService, CaptionDTO } from '@/lib/api/video';
 import { VideoResponseDTO } from '@/lib/types';
-import { useRouter } from 'next/navigation';
 
-export default function EditorPage() {
-    const params = useParams();
-    const videoId = params.videoId as string;
+function EditorPageInner() {
+    const searchParams = useSearchParams();
+    const videoId = searchParams.get('v') ?? '';
     const [video, setVideo] = useState<VideoResponseDTO | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -365,5 +364,13 @@ export default function EditorPage() {
                 </div>
             </main>
         </div>
+    );
+}
+
+export default function EditorPage() {
+    return (
+        <Suspense fallback={<div className="flex justify-center items-center h-screen"><Loader2 className="animate-spin text-blue-500" size={48} /></div>}>
+            <EditorPageInner />
+        </Suspense>
     );
 }

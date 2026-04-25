@@ -23,3 +23,11 @@ backend/uploads/
 *.mp4
 .venv-test
 .coverage
+
+# Capacitor
+frontend/ios/App/Pods
+frontend/ios/App/build
+frontend/ios/DerivedData
+frontend/ios/App/App.xcworkspace/xcuserdata
+frontend/ios/App/App.xcodeproj/xcuserdata
+frontend/ios/App/App.xcodeproj/project.xcworkspace/xcuserdata

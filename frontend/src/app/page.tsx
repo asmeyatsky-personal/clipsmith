@@ -75,7 +75,7 @@ export default function Home() {
                                 </Button>
                             </>
                         ) : (
-                            <Link href={`/profile/${user.username}`}>
+                            <Link href={`/profile?u=${user.username}`}>
                                 <Button size="lg" className="h-14 px-8 rounded-full text-lg bg-zinc-900 dark:bg-white text-white dark:text-black">
                                     Go to Dashboard
                                     <ArrowRight className="ml-2" />

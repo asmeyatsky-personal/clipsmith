@@ -124,7 +124,7 @@ export function Navbar() {
                                     </Button>
                                 </Link>
                                 <UploadModal onUploadSuccess={() => window.location.reload()} />
-                                <Link href={`/profile/${user.username}`}>
+                                <Link href={`/profile?u=${user.username}`}>
                                     <Button variant="ghost" size="icon" className="rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-900">
                                         <User className="w-5 h-5" />
                                     </Button>
@@ -196,7 +196,7 @@ export function Navbar() {
                             <GraduationCap className="w-5 h-5" /> Courses
                         </Button>
                     </Link>
-                    <Link href={`/profile/${user.username}`} onClick={() => setMobileMenuOpen(false)}>
+                    <Link href={`/profile?u=${user.username}`} onClick={() => setMobileMenuOpen(false)}>
                         <Button variant="ghost" className="w-full justify-start gap-3 rounded-xl">
                             <User className="w-5 h-5" /> Profile
                         </Button>

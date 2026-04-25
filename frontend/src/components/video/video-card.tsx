@@ -43,7 +43,7 @@ export function VideoCard({ video }: { video: VideoProps }) {
 
     const handleEdit = (e: React.MouseEvent) => {
         e.stopPropagation();
-        router.push(`/editor/${video.id}`);
+        router.push(`/editor/edit?v=${video.id}`);
     };
 
     return (
