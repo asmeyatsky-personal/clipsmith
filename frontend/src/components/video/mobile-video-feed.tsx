@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { Heart, MessageCircle, Share2, Flag, Volume2, VolumeX, Pause, Plus } from 'lucide-react';
+import { Heart, MessageCircle, Share2, Flag, Volume2, VolumeX, Pause, Plus, Settings as SettingsIcon, User as UserIcon } from 'lucide-react';
 import { apiClient } from '@/lib/api/client';
 import { interactionService } from '@/lib/api/interactions';
 import type { PaginatedVideoResponse, VideoResponseDTO } from '@/lib/types';
@@ -104,21 +104,48 @@ export function MobileVideoFeed({ initialFeedType = 'foryou' }: MobileVideoFeedP
 
     return (
         <div className="fixed inset-0 bg-black overflow-hidden text-white">
-            {/* Tab switcher */}
-            <div className="absolute top-[max(env(safe-area-inset-top),12px)] left-0 right-0 z-30 flex justify-center gap-6 text-sm font-semibold pointer-events-none">
-                {(['following', 'foryou', 'trending'] as FeedType[]).map((t) => (
-                    <button
-                        key={t}
-                        onClick={() => setFeedType(t)}
-                        className={`pointer-events-auto px-3 py-1 rounded-full transition ${
-                            feedType === t
-                                ? 'text-white drop-shadow-md'
-                                : 'text-white/60'
-                        }`}
+            {/* Top bar: profile (left) + tab switcher (center) + settings (right) */}
+            <div className="absolute top-[max(env(safe-area-inset-top),12px)] left-0 right-0 z-30 flex items-center px-3 pointer-events-none">
+                {user ? (
+                    <Link
+                        href={`/profile?u=${user.username}`}
+                        className="pointer-events-auto bg-black/30 backdrop-blur rounded-full p-2"
+                        aria-label="My profile"
                     >
-                        {t === 'foryou' ? 'For You' : t === 'following' ? 'Following' : 'Trending'}
-                    </button>
-                ))}
+                        <UserIcon className="w-5 h-5 text-white" />
+                    </Link>
+                ) : (
+                    <Link
+                        href="/login"
+                        className="pointer-events-auto bg-white/10 backdrop-blur rounded-full px-3 py-1 text-sm font-semibold"
+                    >
+                        Log in
+                    </Link>
+                )}
+                <div className="flex-1 flex justify-center gap-6 text-sm font-semibold">
+                    {(['following', 'foryou', 'trending'] as FeedType[]).map((t) => (
+                        <button
+                            key={t}
+                            onClick={() => setFeedType(t)}
+                            className={`pointer-events-auto px-3 py-1 rounded-full transition ${
+                                feedType === t
+                                    ? 'text-white drop-shadow-md'
+                                    : 'text-white/60'
+                            }`}
+                        >
+                            {t === 'foryou' ? 'For You' : t === 'following' ? 'Following' : 'Trending'}
+                        </button>
+                    ))}
+                </div>
+                {user && (
+                    <Link
+                        href="/settings"
+                        className="pointer-events-auto bg-black/30 backdrop-blur rounded-full p-2"
+                        aria-label="Settings"
+                    >
+                        <SettingsIcon className="w-5 h-5 text-white" />
+                    </Link>
+                )}
             </div>
 
             {/* Feed */}
