@@ -9,9 +9,12 @@ from ...domain.ports.repository_ports import (
     UserRepositoryPort,
     VideoRepositoryPort,
 )
+from ...domain.ports.push_port import DeviceTokenRepositoryPort, PushSenderPort
 from ..dependencies import (
     get_current_user,
+    get_device_token_repo,
     get_notification_repo,
+    get_push_sender_dep,
     get_user_repo,
     get_video_repo,
 )
@@ -23,8 +26,16 @@ def get_notification_service(
     notification_repo: NotificationRepositoryPort = Depends(get_notification_repo),
     user_repo: UserRepositoryPort = Depends(get_user_repo),
     video_repo: VideoRepositoryPort = Depends(get_video_repo),
+    device_token_repo: DeviceTokenRepositoryPort = Depends(get_device_token_repo),
+    push_sender: PushSenderPort = Depends(get_push_sender_dep),
 ) -> NotificationService:
-    return NotificationService(notification_repo, user_repo, video_repo)
+    return NotificationService(
+        notification_repo,
+        user_repo,
+        video_repo,
+        device_token_repo=device_token_repo,
+        push_sender=push_sender,
+    )
 
 
 @router.get("/")

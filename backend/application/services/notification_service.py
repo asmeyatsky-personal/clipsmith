@@ -2,6 +2,11 @@ import logging
 from typing import Callable, Dict, Any, List, Optional
 from datetime import datetime
 from ...domain.entities.notification import Notification, NotificationType
+from ...domain.ports.push_port import (
+    DeviceTokenRepositoryPort,
+    PushPayload,
+    PushSenderPort,
+)
 from ...domain.ports.repository_ports import (
     NotificationRepositoryPort,
     UserRepositoryPort,
@@ -42,11 +47,15 @@ class NotificationService:
         user_repo: UserRepositoryPort,
         video_repo: VideoRepositoryPort,
         email_service=None,
+        device_token_repo: Optional[DeviceTokenRepositoryPort] = None,
+        push_sender: Optional[PushSenderPort] = None,
     ):
         self.notification_repo = notification_repo
         self.user_repo = user_repo
         self.video_repo = video_repo
         self.email_service = email_service
+        self.device_token_repo = device_token_repo
+        self.push_sender = push_sender
 
     def create_like_notification(
         self, video_id: str, liker_user_id: str, video_owner_id: str
@@ -238,6 +247,26 @@ class NotificationService:
                     listener(notification)
                 except Exception as ws_err:
                     logger.warning("Real-time push failed: %s", ws_err)
+
+            # APNs / FCM dispatch — every device the user has registered.
+            if (
+                self.device_token_repo is not None
+                and self.push_sender is not None
+                and notification.user_id
+            ):
+                try:
+                    tokens = self.device_token_repo.list_for_user(notification.user_id)
+                    if tokens:
+                        payload = PushPayload(
+                            title=notification.title,
+                            body=notification.message,
+                            data=notification.data or {},
+                        )
+                        self.push_sender.send(
+                            (t.token for t in tokens), payload
+                        )
+                except Exception as push_err:
+                    logger.warning("Push dispatch failed: %s", push_err)
 
             # Send email for high-priority notification types
             if (

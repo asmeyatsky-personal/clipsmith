@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { Heart, MessageCircle, Share2, Flag, Volume2, VolumeX, Pause, Plus, Settings as SettingsIcon, User as UserIcon } from 'lucide-react';
+import { NotificationBell } from '@/components/notifications/notification-bell';
 import { apiClient } from '@/lib/api/client';
 import { interactionService } from '@/lib/api/interactions';
 import type { PaginatedVideoResponse, VideoResponseDTO } from '@/lib/types';
@@ -138,13 +139,16 @@ export function MobileVideoFeed({ initialFeedType = 'foryou' }: MobileVideoFeedP
                     ))}
                 </div>
                 {user && (
-                    <Link
-                        href="/settings"
-                        className="pointer-events-auto bg-black/30 backdrop-blur rounded-full p-2"
-                        aria-label="Settings"
-                    >
-                        <SettingsIcon className="w-5 h-5 text-white" />
-                    </Link>
+                    <div className="flex items-center gap-2">
+                        <NotificationBell />
+                        <Link
+                            href="/settings"
+                            className="pointer-events-auto bg-black/30 backdrop-blur rounded-full p-2"
+                            aria-label="Settings"
+                        >
+                            <SettingsIcon className="w-5 h-5 text-white" />
+                        </Link>
+                    </div>
                 )}
             </div>
 

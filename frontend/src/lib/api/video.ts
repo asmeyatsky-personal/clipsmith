@@ -40,7 +40,18 @@ export const videoService = {
     },
 
     async search(query: string, page: number = 1, pageSize: number = 20): Promise<PaginatedVideos> {
-        return await apiClient<PaginatedVideos>(`/videos/search?q=${encodeURIComponent(query)}&page=${page}&page_size=${pageSize}`);
+        // Backend returns PaginatedVideoResponseDTO ({items, total, total_pages, page, page_size}).
+        // The frontend has historically used PaginatedVideos ({videos, has_more, ...}) — adapt.
+        const raw = await apiClient<{ items: VideoResponseDTO[]; total: number; page: number; page_size: number; total_pages: number }>(
+            `/videos/search?q=${encodeURIComponent(query)}&page=${page}&page_size=${pageSize}`,
+        );
+        return {
+            videos: raw.items,
+            total: raw.total,
+            page: raw.page,
+            page_size: raw.page_size,
+            has_more: raw.page < raw.total_pages,
+        };
     },
 
     async getCaptions(videoId: string): Promise<CaptionDTO[]> {
