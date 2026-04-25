@@ -543,3 +543,48 @@ ai_router, video_router, video_editor_router, payment_router, monitoring_router,
 | 0.12 Frontend export | ⏸ Phase 1 prerequisite |
 
 **Phase 0 architectural foundation complete. Ready for Phase 1 (Capacitor + iOS submission).**
+
+---
+
+## 12. Phase 1 execution log (2026-04-26)
+
+| Task | Result |
+|---|---|
+| 1.1 Static export | ✅ |
+| 1.2 Capacitor iOS shell | ✅ |
+| 1.3 Mobile vertical feed | ✅ |
+| 1.4 Native record + upload | ✅ |
+| 1.5 Profile + account delete | ✅ |
+| 1.6 Content moderation (report + block) | ✅ |
+| 1.7 Cloudflare R2 | ✅ |
+| 1.8 APNs push (token registration + JWT sender) | ✅ |
+| 1.9 Age gate + legal pages | ✅ |
+| 1.10 App Store prep (Info.plist, PrivacyInfo, checklist) | ✅ |
+| 1.11 ChromeShell layout (hide navbar on full-screen routes) | ✅ |
+| 1.12 Authed redirect home → /feed | ✅ |
+| 1.13 Block filter in feed | ✅ |
+| 1.14 AI moderation pre-screen on upload | ✅ |
+| 1.15 GDPR deletion executes synchronously | ✅ |
+| 1.16 E2E smoke test (18/18 against Neon, 7 bugs caught + fixed) | ✅ |
+| 1.17 Notifications UI + push-on-event | ✅ |
+| 1.18 Search wiring + Discover | ✅ |
+| Polish: clickable #hashtags / @mentions, caption overlay | ✅ |
+| Phase 3 partial: tip-the-creator wiring | ✅ |
+
+### Bugs caught and fixed during smoke testing
+
+1. HashtagDB PK lookup — `session.get(HashtagDB, name)` always returned None
+2. ContentModeration ai_labels — domain dict vs DB str type mismatch
+3. `SQLiteInteractionRepository.get_user_following` missing — replaced via FollowRepositoryPort
+4. `get_user_interactions` / `get_all_interactions` missing — defensive getattr
+5. `get_like` missing — replaced with existing `has_user_liked`
+6. TZ-naive vs aware datetime arithmetic in recommender
+7. VideoResponseDTO.created_at typed as str but DB returns datetime
+
+### Final gate status
+- ✅ import-linter: 5/5 contracts kept
+- ✅ pytest: 498/498 passing
+- ✅ E2E smoke against Neon: 18/18
+- ✅ pip-audit --strict: 0 vulnerabilities
+- ✅ bandit -ll: 0 issues
+- ✅ Frontend build: 19 static routes
