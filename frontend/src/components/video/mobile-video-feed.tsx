@@ -6,6 +6,7 @@ import { Heart, MessageCircle, Share2, Flag, Volume2, VolumeX, Pause, Plus, Sett
 import { NotificationBell } from '@/components/notifications/notification-bell';
 import { apiClient } from '@/lib/api/client';
 import { interactionService } from '@/lib/api/interactions';
+import { videoService, type CaptionDTO } from '@/lib/api/video';
 import type { PaginatedVideoResponse, VideoResponseDTO } from '@/lib/types';
 import { useAuthStore } from '@/lib/auth/auth-store';
 import { CommentSheet } from './comment-sheet';
@@ -234,7 +235,34 @@ function FeedItem({
     const [liked, setLiked] = useState(false);
     const [likeCount, setLikeCount] = useState(video.likes);
     const [paused, setPaused] = useState(false);
+    const [captions, setCaptions] = useState<CaptionDTO[]>([]);
+    const [currentCaption, setCurrentCaption] = useState<string | null>(null);
     const videoRef = useRef<HTMLVideoElement | null>(null);
+
+    useEffect(() => {
+        let cancelled = false;
+        videoService
+            .getCaptions(video.id)
+            .then((list) => {
+                if (!cancelled) setCaptions(list);
+            })
+            .catch(() => {});
+        return () => {
+            cancelled = true;
+        };
+    }, [video.id]);
+
+    useEffect(() => {
+        const vid = videoRef.current;
+        if (!vid || captions.length === 0) return;
+        const onTime = () => {
+            const t = vid.currentTime;
+            const active = captions.find((c) => t >= c.start_time && t <= c.end_time);
+            setCurrentCaption(active?.text ?? null);
+        };
+        vid.addEventListener('timeupdate', onTime);
+        return () => vid.removeEventListener('timeupdate', onTime);
+    }, [captions]);
 
     const togglePlay = () => {
         const vid = videoRef.current;
@@ -334,6 +362,15 @@ function FeedItem({
                 </div>
             )}
 
+            {/* Caption overlay */}
+            {currentCaption && (
+                <div className="absolute bottom-[max(env(safe-area-inset-bottom),120px)] left-0 right-0 flex justify-center pointer-events-none px-6 z-10">
+                    <div className="bg-black/70 backdrop-blur text-white px-3 py-2 rounded-md text-sm font-medium max-w-md text-center">
+                        {currentCaption}
+                    </div>
+                </div>
+            )}
+
             {/* Mute toggle */}
             <button
                 onClick={onToggleMute}
@@ -375,12 +412,53 @@ function FeedItem({
                 >
                     @{video.creator_id}
                 </Link>
-                <p className="text-sm leading-snug line-clamp-2">{video.title}</p>
+                <p className="text-sm leading-snug line-clamp-2">
+                    <RichText text={video.title} />
+                </p>
                 {video.description && (
-                    <p className="text-xs text-white/80 line-clamp-2">{video.description}</p>
+                    <p className="text-xs text-white/80 line-clamp-2">
+                        <RichText text={video.description} />
+                    </p>
                 )}
             </div>
         </div>
+    );
+}
+
+/** Render text with #hashtags and @mentions as inline links. */
+function RichText({ text }: { text: string }) {
+    if (!text) return null;
+    const parts = text.split(/(#[\w]+|@[\w-]+)/g);
+    return (
+        <>
+            {parts.map((p, i) => {
+                if (p.startsWith('#')) {
+                    return (
+                        <Link
+                            key={i}
+                            href={`/search?q=${encodeURIComponent(p)}`}
+                            className="text-blue-300 hover:text-blue-200"
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            {p}
+                        </Link>
+                    );
+                }
+                if (p.startsWith('@')) {
+                    return (
+                        <Link
+                            key={i}
+                            href={`/profile?u=${p.slice(1)}`}
+                            className="text-blue-300 hover:text-blue-200"
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            {p}
+                        </Link>
+                    );
+                }
+                return <span key={i}>{p}</span>;
+            })}
+        </>
     );
 }
 
