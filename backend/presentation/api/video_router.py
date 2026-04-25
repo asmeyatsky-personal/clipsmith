@@ -50,6 +50,7 @@ from sqlmodel import Session
 from ...application.dtos.interaction_dto import CommentRequestDTO, CommentResponseDTO
 from ..dependencies import db_models  # legacy ORM access
 from ..dependencies import SQLiteVideoRepository, SQLiteHashtagRepository, SQLiteInteractionRepository, SQLiteTipRepository, SQLiteCaptionRepository
+from ..dependencies import get_report_content_use_case as _report_content_use_case_dep
 from ..dependencies import JWTAdapter, SQLiteUserRepository
 from ..dependencies import get_session_for_router as get_session
 from ..dependencies import get_current_user
@@ -270,6 +271,34 @@ def increment_video_views(
             status_code=status.HTTP_404_NOT_FOUND, detail="Video not found"
         )
     return {"views": video.views}
+
+
+@router.post("/{video_id}/report", status_code=status.HTTP_201_CREATED)
+def report_video(
+    video_id: str,
+    body: dict,
+    current_user: Annotated[dict, Depends(get_current_user)],
+    repo: VideoRepositoryPort = Depends(get_video_repo),
+    use_case=Depends(_report_content_use_case_dep),
+):
+    """User flags a video for moderation. Apple Guideline 1.2."""
+    video = repo.get_by_id(video_id)
+    if not video:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Video not found"
+        )
+    reason = (body or {}).get("reason", "")
+    if not reason:
+        raise HTTPException(status_code=400, detail="reason is required")
+
+    record = use_case.execute(
+        content_type="video",
+        content_id=video_id,
+        reporter_id=current_user["user_id"],
+        reason_text=reason,
+        creator_id=video.creator_id,
+    )
+    return {"success": True, "id": record.id}
 
 
 @router.delete("/{video_id}", status_code=status.HTTP_204_NO_CONTENT)

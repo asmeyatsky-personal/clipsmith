@@ -21,6 +21,7 @@ from ..application.use_cases.password_reset import (
     ConfirmPasswordResetUseCase,
     RequestPasswordResetUseCase,
 )
+from ..application.use_cases.report_content import ReportContentUseCase
 from ..application.use_cases.register_user import RegisterUserUseCase
 from ..application.use_cases.upload_video import UploadVideoUseCase
 from ..domain.ports.auth_security_port import (
@@ -148,6 +149,13 @@ def get_payment_repo(
 
 def get_audit_log(session: Session = Depends(get_session)) -> AuditLogPort:
     return SQLModelAuditLog(session)
+
+
+def get_report_content_use_case(
+    moderation_repo: ContentModerationRepositoryPort = Depends(get_content_moderation_repo),
+    audit: AuditLogPort = Depends(get_audit_log),
+) -> ReportContentUseCase:
+    return ReportContentUseCase(moderation_repo, audit)
 
 
 # --- Legacy router providers (transitional) ---
