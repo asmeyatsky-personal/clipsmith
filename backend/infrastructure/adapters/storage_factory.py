@@ -18,6 +18,40 @@ def create_storage_adapter() -> StoragePort:
     # Support both STORAGE_TYPE (existing) and STORAGE_BACKEND (alternative name)
     storage_type = os.getenv("STORAGE_TYPE", os.getenv("STORAGE_BACKEND", "local")).lower()
 
+    if storage_type == "r2":
+        # Cloudflare R2 is S3-compatible. Wrap the S3 adapter with the R2
+        # endpoint convention. Required env:
+        #   R2_ACCOUNT_ID                — your Cloudflare account id
+        #   R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY  — R2 API token
+        #   R2_BUCKET_NAME                — R2 bucket
+        #   R2_PUBLIC_DOMAIN              — public CDN host (e.g. media.clipsmith.app)
+        logger.info("Initializing Cloudflare R2 storage adapter")
+        account_id = os.getenv("R2_ACCOUNT_ID")
+        access_key = os.getenv("R2_ACCESS_KEY_ID")
+        secret_key = os.getenv("R2_SECRET_ACCESS_KEY")
+        bucket = os.getenv("R2_BUCKET_NAME")
+        public_domain = os.getenv("R2_PUBLIC_DOMAIN")
+        missing = [
+            n
+            for n, v in [
+                ("R2_ACCOUNT_ID", account_id),
+                ("R2_ACCESS_KEY_ID", access_key),
+                ("R2_SECRET_ACCESS_KEY", secret_key),
+                ("R2_BUCKET_NAME", bucket),
+            ]
+            if not v
+        ]
+        if missing:
+            raise ValueError(f"Missing R2 environment variables: {missing}")
+        return S3StorageAdapter(
+            bucket_name=bucket,
+            aws_access_key_id=access_key,
+            aws_secret_access_key=secret_key,
+            aws_region="auto",  # R2 ignores region; "auto" is canonical
+            cloudfront_domain=public_domain,
+            endpoint_url=f"https://{account_id}.r2.cloudflarestorage.com",
+        )
+
     if storage_type == "s3":
         logger.info("Initializing S3 storage adapter")
 
@@ -73,7 +107,7 @@ def create_storage_adapter() -> StoragePort:
 
     else:
         logger.error(
-            f"Unknown storage type: {storage_type}. Supported types: 'local', 's3', 'gcs'"
+            f"Unknown storage type: {storage_type}. Supported types: 'local', 's3', 'r2', 'gcs'"
         )
         raise ValueError(f"Unsupported storage type: {storage_type}")
 
