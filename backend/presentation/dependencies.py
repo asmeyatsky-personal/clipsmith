@@ -39,9 +39,11 @@ from ..domain.ports.repository_ports import (
     VideoRepositoryPort,
 )
 from ..domain.ports.analytics_repository_port import AnalyticsRepositoryPort
+from ..domain.ports.audit_log_port import AuditLogPort
 from ..domain.ports.payment_repository_port import PaymentRepositoryPort
 from ..domain.ports.security_port import JWTPort, PasswordHelperPort
 from ..domain.ports.storage_port import StoragePort
+from ..infrastructure.adapters.audit_log import SQLModelAuditLog
 from ..infrastructure.adapters.email_adapter import get_email_adapter
 from ..infrastructure.adapters.storage_factory import get_storage_adapter
 from ..infrastructure.queue.video_queue_adapter import RQVideoQueueAdapter
@@ -120,6 +122,10 @@ def get_payment_repo(
     session: Session = Depends(get_session),
 ) -> PaymentRepositoryPort:
     return SQLitePaymentRepository(session)
+
+
+def get_audit_log(session: Session = Depends(get_session)) -> AuditLogPort:
+    return SQLModelAuditLog(session)
 
 
 # --- Adapter / port providers ---

@@ -26,6 +26,12 @@ from .presentation.middleware.monitoring_middleware import (
     HealthCheckMiddleware,
     UserActivityMiddleware,
 )
+from .infrastructure.observability import (
+    CorrelationIdMiddleware,
+    configure_logging,
+    init_otel,
+    init_sentry,
+)
 from .infrastructure.repositories.database import create_db_and_tables
 from .infrastructure.logging_config import RequestLoggingMiddleware, setup_logging
 from slowapi import Limiter, _rate_limit_exceeded_handler
@@ -41,8 +47,12 @@ settings = get_settings()
 
 if settings.is_production():
     setup_logging("WARNING")
+    configure_logging("WARNING")
 else:
     setup_logging("INFO")
+    configure_logging("INFO")
+
+init_sentry()
 
 limiter = Limiter(key_func=get_remote_address, default_limits=["100/minute"])
 
@@ -54,6 +64,12 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="clipsmith API", lifespan=lifespan)
+
+# OpenTelemetry — no-op unless OTEL_EXPORTER_OTLP_ENDPOINT is set.
+init_otel(app)
+# Correlation ID middleware must wrap before security headers so the ID is
+# available to subsequent middlewares and downstream handlers.
+app.add_middleware(CorrelationIdMiddleware)
 
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):

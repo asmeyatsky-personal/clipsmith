@@ -51,7 +51,11 @@ class GenerateCaptionsUseCase:
         )
 
         logger.info(f"Starting AssemblyAI transcription for audio: {audio_file_path}")
-        transcript = transcriber.transcribe(audio_file_path, config=config)
+        # Resilience: circuit breaker around the network call.
+        from ..utils.resilience import assemblyai_breaker
+        transcript = assemblyai_breaker.call(
+            transcriber.transcribe, audio_file_path, config=config
+        )
         logger.info(f"AssemblyAI transcription status: {transcript.status}")
 
         if transcript.status == aai.TranscriptStatus.error:

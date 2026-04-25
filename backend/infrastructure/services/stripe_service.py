@@ -1,13 +1,21 @@
 import os
+from typing import Any, Dict, Optional
+
 import stripe
-from typing import Dict, Any, Optional
+
 from ...domain.ports.payment_repository_port import StripeServicePort
+from ...application.utils.resilience import stripe_breaker
+
+# Bound network calls to 10s; Stripe defaults are unbounded for some ops.
+stripe.api_request_timeout = 10
+stripe.max_network_retries = 2
 
 
 class StripeService(StripeServicePort):
     def __init__(self):
         stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
         self.webhook_secret = os.getenv("STRIPE_WEBHOOK_SECRET")
+        self._breaker = stripe_breaker
     
     # Payment processing
     async def create_payment_intent(self, amount: float, currency: str = "USD",

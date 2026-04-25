@@ -414,3 +414,78 @@ Estimated effort: ~3 days, 1–2 hours per router. Not done in this session.
 These all share the same anti-pattern: routers do raw `session.exec(select(SomeDB)...)`. Fixing them requires extracting use cases per endpoint plus a service layer that translates ORM rows to domain entities. ~2–3 days each for the larger ones.
 
 **Recommended approach:** rather than refactor each router individually, build the `*_service.py` files (already moved to `infrastructure/services/`) into proper application services that take repository ports and return domain entities. Then routers can call services through application use cases. This is structural work that pays off once.
+
+### 2026-04-26 (cont 3) — Phases 0.4 / 0.5 / 0.6 / 0.7 / 0.8 / 0.10 / 0.11 / 0.12
+
+**Phase 0.5 — domain immutability — DONE (already satisfied)**
+All domain entities under `backend/domain/entities/` already use `@dataclass(frozen=True, kw_only=True)`. Confirmed by grep — no non-frozen dataclass in the entire entities tree. The architectural skeleton was already correct on this dimension; just hadn't been verified mechanically.
+
+**Phase 0.6 — ports for external deps — DONE**
+Ports added or pre-existing for every external dep:
+- `security_port.py` — PasswordHelperPort, JWTPort
+- `queue_port.py` — VideoQueuePort
+- `email_port.py` — EmailSenderPort
+- `auth_security_port.py` — PasswordResetRepositoryPort, TwoFactorRepositoryPort
+- `audit_log_port.py` — AuditLogPort + AuditEvent
+- `transcription_port.py` — TranscriptionPort + TranscriptionResult
+- Plus existing: `storage_port.py`, `repository_ports.py`, `payment_repository_port.py`, `analytics_repository_port.py`, `gdpr_repository_port.py`, `video_editor_repository_port.py`
+
+**Phase 0.7 — audit log adapter — DONE (scaffolding)**
+- `domain/ports/audit_log_port.py` — `AuditLogPort` + `AuditEvent`
+- `infrastructure/adapters/audit_log.py` — `SQLModelAuditLog` (append-only DB), `NoopAuditLog` (tests), `hash_state()` for before/after fingerprints, structlog mirror
+- `audit_log` table registered in SQLModel metadata
+- Wired into `presentation/dependencies.py` as `get_audit_log`
+- **Remaining:** call sites — every state-mutating use case needs to emit. Defer per-use-case wiring; pattern is in place.
+
+**Phase 0.8 — timeouts + circuit breakers — DONE (scaffolding)**
+- `application/utils/resilience.py` — `CircuitBreaker` (closed/open/half-open with reset window), `retry_with_backoff` decorator, named breakers (`stripe_breaker`, `assemblyai_breaker`, `http_breaker`)
+- `stripe_service.py` — `stripe.api_request_timeout = 10`, `stripe.max_network_retries = 2`, breaker reference
+- `generate_captions.py` — AssemblyAI call wrapped in `assemblyai_breaker.call(...)`
+- `tasks.py` — `requests.get(..., timeout=30)` was already in place
+- **Remaining:** apply breakers to every external call site individually as sites are added. Pattern established.
+
+**Phase 0.10 — coverage gate — DONE (60% floor; ramp 80%)**
+- CI uses `pytest --cov-fail-under=60`. Will ramp to 80 after router refactor lands and existing tests run on the new structure.
+
+**Phase 0.11 — observability scaffolding — DONE**
+- `infrastructure/observability.py`:
+  - `configure_logging()` — structlog with JSON renderer, ISO timestamps, correlation ID injection from contextvar
+  - `CorrelationIdMiddleware` — pure ASGI; reads `X-Correlation-ID` header or mints UUID, propagates via contextvar, echoes in response header
+  - `init_otel(app)` — no-op unless `OTEL_EXPORTER_OTLP_ENDPOINT` set; instruments FastAPI when packages available
+  - `init_sentry()` — no-op unless `SENTRY_DSN` set
+- `main.py` wires `configure_logging`, `init_sentry`, `init_otel`, and adds `CorrelationIdMiddleware` before security headers
+- `requirements.txt` adds `opentelemetry-{api,sdk,exporter-otlp-proto-http,instrumentation-fastapi}` and bumps `structlog` to 24.4.0
+
+**Phase 0.4 — Postgres + Alembic — DONE (scaffolding)**
+- `requirements.txt` adds `alembic==1.13.3`, `psycopg[binary]==3.2.3`
+- `backend/alembic.ini` — config with `script_location = migrations`
+- `backend/migrations/env.py` — reads `DATABASE_URL` env, uses `SQLModel.metadata`, imports models + audit_log table
+- `backend/migrations/script.py.mako` — migration template
+- `backend/migrations/versions/` — empty, awaiting first autogenerate
+- `database.py` already supports Postgres URLs (preexisting)
+- **User action required:** provision Neon (free tier), set `DATABASE_URL=postgresql+psycopg://...`, run `alembic revision --autogenerate -m "initial"` then `alembic upgrade head`
+
+**Phase 0.12 — frontend static export + ESLint boundaries — DEFERRED to Phase 1**
+- Static export (`output: "export"`) requires eliminating SSR routes — touches every page in `frontend/src/app/`. Deferred to Phase 1 alongside Capacitor integration where it's the prerequisite step.
+- ESLint boundaries plugin needs an architecture decision on frontend layer structure (current code has flat `app/`, `components/`, `lib/` — no DDD layering). Defer until structure decided.
+
+### Final session summary
+
+| Task | Status | Notes |
+|---|---|---|
+| 0.1 Configure import-linter + audit | ✅ Complete |  |
+| 0.2 Fix layer boundary violations | 🟡 4/5 contracts green | 10 routers still doing CRUD on ORM models — backlog |
+| 0.3 Python 3.10 → 3.12 | ✅ Complete |  |
+| 0.4 Postgres + Alembic | ✅ Scaffolding done | User action: Neon + first migration |
+| 0.5 Domain models immutable | ✅ Already complete |  |
+| 0.6 Ports for external deps | ✅ Complete |  |
+| 0.7 Audit log adapter | ✅ Scaffolding done | Per-use-case wiring backlog |
+| 0.8 Timeouts + circuit breakers | ✅ Scaffolding done | Per-call-site application backlog |
+| 0.9 CI security gates blocking | ✅ Complete |  |
+| 0.10 Coverage gate | ✅ Complete (60%) | Ramp 80% after router refactor |
+| 0.11 Observability scaffolding | ✅ Complete |  |
+| 0.12 Frontend static export + ESLint boundaries | ⏸ Deferred to Phase 1 |  |
+
+**Phase 0 status: 9/12 complete, 1 partial (0.2 routers), 2 deferred (Postgres needs user action, frontend is Phase 1 prerequisite).**
+
+CI continues to be intentionally red on `architecture-lint` until the router refactor backlog completes. All other CI gates active (gitleaks, pip-audit strict, bandit, npm audit high, pytest coverage 60%).

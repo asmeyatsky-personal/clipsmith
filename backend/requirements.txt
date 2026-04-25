@@ -59,7 +59,7 @@ boto3==1.35.11
 botocore==1.35.11
 pyotp==2.9.0
 sentry-sdk[fastapi]==2.14.0
-structlog==23.3.0
+structlog==24.4.0
 python-json-logger==2.0.7
 prometheus-client==0.21.0
 psutil==6.1.0
@@ -68,3 +68,9 @@ qrcode[pil]==7.4.2
 requests==2.32.3
 stripe==10.12.0
 google-cloud-storage==2.18.2
+opentelemetry-api==1.27.0
+opentelemetry-sdk==1.27.0
+opentelemetry-exporter-otlp-proto-http==1.27.0
+opentelemetry-instrumentation-fastapi==0.48b0
+alembic==1.13.3
+psycopg[binary]==3.2.3
