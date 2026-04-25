@@ -6,21 +6,21 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, R
 from fastapi.security import OAuth2PasswordBearer
 from typing import Annotated, List, Optional
 from ...application.services.video_editor_service import VideoEditorService
-from ...infrastructure.repositories.sqlite_video_editor_repo import (
-    SQLiteVideoEditorRepository,
-)
-from ...infrastructure.repositories.database import get_session
-from ...infrastructure.security.jwt_adapter import JWTAdapter
 from sqlmodel import Session, select
-from ...infrastructure.repositories.models import (
-    VideoProjectDB,
-    VideoEditorKeyframeDB,
-    VideoEditorColorGradeDB,
-    VideoEditorAudioMixDB,
-    VideoEditorChromaKeyDB,
-    VideoEditorEffectDB,
-)
+from ..dependencies import db_models  # legacy ORM access
+from ..dependencies import SQLiteVideoEditorRepository
+from ..dependencies import JWTAdapter
+from ..dependencies import get_session_for_router as get_session
+from ..dependencies import get_current_user
+from ..dependencies import get_jwt as _get_jwt_singleton
 
+ProjectMonetizationDB = db_models.ProjectMonetizationDB
+VideoEditorAudioMixDB = db_models.VideoEditorAudioMixDB
+VideoEditorChromaKeyDB = db_models.VideoEditorChromaKeyDB
+VideoEditorColorGradeDB = db_models.VideoEditorColorGradeDB
+VideoEditorEffectDB = db_models.VideoEditorEffectDB
+VideoEditorKeyframeDB = db_models.VideoEditorKeyframeDB
+VideoProjectDB = db_models.VideoProjectDB
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
 
@@ -404,11 +404,6 @@ async def get_monetization_settings(
     session: Session = Depends(get_session),
 ):
     """Get monetization settings for a project."""
-    from ...infrastructure.repositories.models import (
-        ProjectMonetizationDB,
-        VideoProjectDB,
-    )
-
     project = session.get(VideoProjectDB, project_id)
     if not project or project.user_id != current_user["id"]:
         raise HTTPException(status_code=403, detail="Access denied")
@@ -447,11 +442,6 @@ async def update_monetization_settings(
     session: Session = Depends(get_session),
 ):
     """Update monetization settings for a project."""
-    from ...infrastructure.repositories.models import (
-        ProjectMonetizationDB,
-        VideoProjectDB,
-    )
-
     project = session.get(VideoProjectDB, project_id)
     if not project or project.user_id != current_user["id"]:
         raise HTTPException(status_code=403, detail="Access denied")
@@ -512,7 +502,6 @@ async def publish_project(
     session: Session = Depends(get_session),
 ):
     """Publish a project as a video."""
-    from ...infrastructure.repositories.models import VideoProjectDB
 
     project = session.get(VideoProjectDB, project_id)
     if not project or project.user_id != current_user["id"]:
@@ -547,7 +536,6 @@ async def export_project(
     session: Session = Depends(get_session),
 ):
     """Export a project (placeholder - actual rendering would be async)."""
-    from ...infrastructure.repositories.models import VideoProjectDB
 
     project = session.get(VideoProjectDB, project_id)
     if not project or project.user_id != current_user["id"]:
@@ -576,7 +564,6 @@ async def get_export_status(
     session: Session = Depends(get_session),
 ):
     """Get export status for a project."""
-    from ...infrastructure.repositories.models import VideoProjectDB
 
     project = session.get(VideoProjectDB, project_id)
     if not project or project.user_id != current_user["id"]:
@@ -599,7 +586,6 @@ async def duplicate_project(
     session: Session = Depends(get_session),
 ):
     """Duplicate a project."""
-    from ...infrastructure.repositories.models import VideoProjectDB
     import uuid
 
     original = session.get(VideoProjectDB, project_id)
@@ -636,7 +622,6 @@ async def add_keyframe(
     session: Session = Depends(get_session),
 ):
     """Add a keyframe to a track."""
-    from ...infrastructure.repositories.models import VideoEditorKeyframeDB
 
     project = session.get(VideoProjectDB, project_id)
     if not project or project.user_id != current_user["id"]:
@@ -717,7 +702,6 @@ async def set_color_grade(
     session: Session = Depends(get_session),
 ):
     """Set color grading for a track."""
-    from ...infrastructure.repositories.models import VideoEditorColorGradeDB
 
     project = session.get(VideoProjectDB, project_id)
     if not project or project.user_id != current_user["id"]:
@@ -816,7 +800,6 @@ async def set_audio_mix(
     session: Session = Depends(get_session),
 ):
     """Set audio mixing for a track."""
-    from ...infrastructure.repositories.models import VideoEditorAudioMixDB
 
     project = session.get(VideoProjectDB, project_id)
     if not project or project.user_id != current_user["id"]:
@@ -917,7 +900,6 @@ async def set_chroma_key(
     session: Session = Depends(get_session),
 ):
     """Set chroma key (green screen) settings for a track."""
-    from ...infrastructure.repositories.models import VideoEditorChromaKeyDB
 
     project = session.get(VideoProjectDB, project_id)
     if not project or project.user_id != current_user["id"]:
@@ -1006,7 +988,6 @@ async def add_effect(
     session: Session = Depends(get_session),
 ):
     """Add an effect to a track."""
-    from ...infrastructure.repositories.models import VideoEditorEffectDB
 
     project = session.get(VideoProjectDB, project_id)
     if not project or project.user_id != current_user["id"]:

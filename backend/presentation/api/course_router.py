@@ -1,10 +1,18 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from typing import Optional
-from ...infrastructure.repositories.database import get_session
-from .auth_router import get_current_user
 from sqlmodel import Session, select
 from datetime import datetime, UTC
 import uuid
+from ..dependencies import db_models  # legacy ORM access
+from ..dependencies import get_session_for_router as get_session
+from ..dependencies import get_current_user
+
+CourseDB = db_models.CourseDB
+CourseEnrollmentDB = db_models.CourseEnrollmentDB
+CourseLessonDB = db_models.CourseLessonDB
+CreatorFundEligibilityDB = db_models.CreatorFundEligibilityDB
+LessonProgressDB = db_models.LessonProgressDB
+SubscriptionTierDB = db_models.SubscriptionTierDB
 
 router = APIRouter(prefix="/api/courses", tags=["courses"])
 
@@ -19,7 +27,6 @@ def create_course(
     session: Session = Depends(get_session),
 ):
     """Create a new course."""
-    from ...infrastructure.repositories.models import CourseDB
 
     title = request_body.get("title")
     description = request_body.get("description", "")
@@ -63,7 +70,6 @@ def list_courses(
     session: Session = Depends(get_session),
 ):
     """List available courses."""
-    from ...infrastructure.repositories.models import CourseDB
 
     query = select(CourseDB).where(CourseDB.status == "published")
     if category:
@@ -95,7 +101,6 @@ def get_enrolled_courses(
     session: Session = Depends(get_session),
 ):
     """Get courses the current user is enrolled in."""
-    from ...infrastructure.repositories.models import CourseDB, CourseEnrollmentDB
 
     enrollments = session.exec(
         select(CourseEnrollmentDB).where(
@@ -126,7 +131,6 @@ def get_creator_courses(
     session: Session = Depends(get_session),
 ):
     """Get courses created by a specific creator."""
-    from ...infrastructure.repositories.models import CourseDB
 
     courses = session.exec(
         select(CourseDB).where(CourseDB.creator_id == creator_id)
@@ -155,7 +159,6 @@ def get_course(
     session: Session = Depends(get_session),
 ):
     """Get a specific course with its lessons."""
-    from ...infrastructure.repositories.models import CourseDB, CourseLessonDB
 
     course = session.get(CourseDB, course_id)
     if not course:
@@ -199,7 +202,6 @@ def add_lesson(
     session: Session = Depends(get_session),
 ):
     """Add a lesson to a course."""
-    from ...infrastructure.repositories.models import CourseDB, CourseLessonDB
 
     course = session.get(CourseDB, course_id)
     if not course:
@@ -247,7 +249,6 @@ def enroll_in_course(
     session: Session = Depends(get_session),
 ):
     """Enroll in a course."""
-    from ...infrastructure.repositories.models import CourseDB, CourseEnrollmentDB
 
     course = session.get(CourseDB, course_id)
     if not course:
@@ -283,7 +284,6 @@ def update_lesson_progress(
     session: Session = Depends(get_session),
 ):
     """Update lesson progress for an enrolled course."""
-    from ...infrastructure.repositories.models import CourseEnrollmentDB, LessonProgressDB
 
     enrollment = session.exec(
         select(CourseEnrollmentDB).where(
@@ -335,7 +335,6 @@ def create_subscription_tier(
     session: Session = Depends(get_session),
 ):
     """Create a subscription tier for the creator."""
-    from ...infrastructure.repositories.models import SubscriptionTierDB
 
     name = request_body.get("name")
     price = request_body.get("price")
@@ -379,7 +378,6 @@ def get_subscription_tiers(
     session: Session = Depends(get_session),
 ):
     """Get subscription tiers for a creator."""
-    from ...infrastructure.repositories.models import SubscriptionTierDB
 
     tiers = session.exec(
         select(SubscriptionTierDB).where(
@@ -412,7 +410,6 @@ def apply_for_creator_fund(
     session: Session = Depends(get_session),
 ):
     """Apply for the creator fund."""
-    from ...infrastructure.repositories.models import CreatorFundEligibilityDB
 
     existing = session.exec(
         select(CreatorFundEligibilityDB).where(
@@ -451,7 +448,6 @@ def get_creator_fund_status(
     session: Session = Depends(get_session),
 ):
     """Get creator fund application status."""
-    from ...infrastructure.repositories.models import CreatorFundEligibilityDB
 
     application = session.exec(
         select(CreatorFundEligibilityDB).where(

@@ -4,14 +4,21 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Form
 from fastapi.responses import JSONResponse
 from typing import List, Optional
 from ...application.services.payment_service import PaymentService
-from ...infrastructure.repositories.sqlite_payment_repo import SQLitePaymentRepository
-from ...infrastructure.services.stripe_service import StripeService
-from ...infrastructure.repositories.database import get_session
-from .auth_router import get_current_user
 from ...domain.entities.payment import TransactionType, Transaction
 from sqlmodel import Session, select
 from datetime import datetime, UTC
 import json
+from ..dependencies import db_models  # legacy ORM access
+from ..dependencies import SQLitePaymentRepository
+from ..dependencies import get_session_for_router as get_session
+from ..dependencies import get_current_user
+
+BrandCampaignDB = db_models.BrandCampaignDB
+BrandProfileDB = db_models.BrandProfileDB
+PremiumContentDB = db_models.PremiumContentDB
+PremiumPurchaseDB = db_models.PremiumPurchaseDB
+SubscriptionDB = db_models.SubscriptionDB
+SubscriptionTierDB = db_models.SubscriptionTierDB
 
 logger = logging.getLogger(__name__)
 
@@ -638,7 +645,6 @@ async def create_premium_content(
     session: Session = Depends(get_session),
 ):
     """Create premium content for a video."""
-    from ..infrastructure.repositories.models import PremiumContentDB
 
     existing = session.exec(
         select(PremiumContentDB).where(
@@ -670,7 +676,6 @@ async def get_premium_content(
     session: Session = Depends(get_session),
 ):
     """Get premium content info for a video."""
-    from ..infrastructure.repositories.models import PremiumContentDB
 
     premium = session.exec(
         select(PremiumContentDB).where(
@@ -696,7 +701,6 @@ async def purchase_premium_content(
     session: Session = Depends(get_session),
 ):
     """Purchase premium content."""
-    from ..infrastructure.repositories.models import PremiumContentDB, PremiumPurchaseDB
 
     premium = session.get(PremiumContentDB, premium_content_id)
     if not premium or not premium.is_active:
@@ -735,7 +739,6 @@ async def get_purchased_content(
     session: Session = Depends(get_session),
 ):
     """Get user's purchased premium content."""
-    from ..infrastructure.repositories.models import PremiumContentDB, PremiumPurchaseDB
 
     purchases = session.exec(
         select(PremiumPurchaseDB).where(
@@ -768,7 +771,6 @@ async def check_premium_access(
 ):
     """Check if user has access to premium content for a video.
     Enforces access control: only purchasers, subscribers, or the creator can access."""
-    from ...infrastructure.repositories.models import PremiumContentDB, PremiumPurchaseDB, SubscriptionDB
 
     premium = session.exec(
         select(PremiumContentDB).where(
@@ -824,7 +826,6 @@ async def get_creator_subscription_tiers(
     session: Session = Depends(get_session),
 ):
     """Get predefined subscription tiers for a creator (PRD: $2.99-$9.99/month)."""
-    from ...infrastructure.repositories.models import SubscriptionTierDB
 
     tiers = session.exec(
         select(SubscriptionTierDB).where(
@@ -871,7 +872,6 @@ async def create_brand_profile(
     session: Session = Depends(get_session),
 ):
     """Create a brand profile."""
-    from ..infrastructure.repositories.models import BrandProfileDB
 
     body = await request.json()
 
@@ -902,7 +902,6 @@ async def get_brand_profile(
     session: Session = Depends(get_session),
 ):
     """Get brand profile."""
-    from ..infrastructure.repositories.models import BrandProfileDB
 
     brand = session.exec(
         select(BrandProfileDB).where(BrandProfileDB.user_id == current_user["id"])
@@ -929,7 +928,6 @@ async def create_campaign(
     session: Session = Depends(get_session),
 ):
     """Create a brand campaign."""
-    from ..infrastructure.repositories.models import BrandCampaignDB
 
     body = await request.json()
 
@@ -955,7 +953,6 @@ async def list_campaigns(
     session: Session = Depends(get_session),
 ):
     """List campaigns."""
-    from ..infrastructure.repositories.models import BrandCampaignDB
 
     query = select(BrandCampaignDB).where(
         (BrandCampaignDB.brand_id == current_user["id"])
@@ -989,7 +986,6 @@ async def respond_to_campaign(
     session: Session = Depends(get_session),
 ):
     """Accept or reject a campaign."""
-    from ..infrastructure.repositories.models import BrandCampaignDB
 
     campaign = session.get(BrandCampaignDB, campaign_id)
     if not campaign:

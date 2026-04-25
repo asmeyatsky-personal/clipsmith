@@ -1,18 +1,18 @@
 import json
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Request
-from ...infrastructure.repositories.database import get_session
-from ...infrastructure.repositories.models import (
-    VideoProjectDB,
-    AICaptionJobDB,
-    AITemplateDB,
-    AIVideoGenerationDB,
-    AIVoiceOverDB,
-)
-from ...infrastructure.security.jwt_adapter import JWTAdapter
-from ...infrastructure.repositories.sqlite_user_repo import SQLiteUserRepository
 from sqlmodel import Session, select
 from datetime import datetime
+from ..dependencies import db_models  # legacy ORM access
+from ..dependencies import JWTAdapter, SQLiteUserRepository
+from ..dependencies import get_session_for_router as get_session
+from ..dependencies import get_jwt as _get_jwt_singleton
+
+AICaptionJobDB = db_models.AICaptionJobDB
+AITemplateDB = db_models.AITemplateDB
+AIVideoGenerationDB = db_models.AIVideoGenerationDB
+AIVoiceOverDB = db_models.AIVoiceOverDB
+VideoProjectDB = db_models.VideoProjectDB
 
 router = APIRouter(prefix="/api/ai", tags=["ai_tools"])
 

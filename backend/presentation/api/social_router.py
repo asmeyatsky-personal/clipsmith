@@ -1,10 +1,20 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from typing import Optional
-from ...infrastructure.repositories.database import get_session
-from .auth_router import get_current_user
 from sqlmodel import Session, select
 from datetime import datetime, UTC
 import uuid
+from ..dependencies import db_models  # legacy ORM access
+from ..dependencies import get_session_for_router as get_session
+from ..dependencies import get_current_user
+
+CollaborativeVideoDB = db_models.CollaborativeVideoDB
+DirectMessageDB = db_models.DirectMessageDB
+DuetDB = db_models.DuetDB
+LiveStreamDB = db_models.LiveStreamDB
+LiveStreamGuestDB = db_models.LiveStreamGuestDB
+VideoCollaboratorDB = db_models.VideoCollaboratorDB
+WatchPartyDB = db_models.WatchPartyDB
+WatchPartyParticipantDB = db_models.WatchPartyParticipantDB
 
 router = APIRouter(prefix="/api/social", tags=["social"])
 
@@ -19,7 +29,6 @@ def create_duet(
     session: Session = Depends(get_session),
 ):
     """Create a duet with another video."""
-    from ...infrastructure.repositories.models import DuetDB
 
     original_video_id = request_body.get("original_video_id")
     response_video_id = request_body.get("response_video_id")
@@ -58,7 +67,6 @@ def get_duets_for_video(
     session: Session = Depends(get_session),
 ):
     """Get all duets associated with a video."""
-    from ...infrastructure.repositories.models import DuetDB
 
     duets = session.exec(
         select(DuetDB).where(
@@ -93,7 +101,6 @@ def create_collaborative_video(
     session: Session = Depends(get_session),
 ):
     """Create a collaborative video project."""
-    from ...infrastructure.repositories.models import CollaborativeVideoDB
 
     video_id = request_body.get("video_id")
     max_participants = request_body.get("max_participants", 5)
@@ -130,7 +137,6 @@ def join_collaborative_video(
     session: Session = Depends(get_session),
 ):
     """Join a collaborative video project."""
-    from ...infrastructure.repositories.models import CollaborativeVideoDB, VideoCollaboratorDB
 
     collab = session.get(CollaborativeVideoDB, collab_id)
     if not collab:
@@ -171,7 +177,6 @@ def start_live_stream(
     session: Session = Depends(get_session),
 ):
     """Start a new live stream."""
-    from ...infrastructure.repositories.models import LiveStreamDB
 
     title = request_body.get("title")
     description = request_body.get("description", "")
@@ -217,7 +222,6 @@ def end_live_stream(
     session: Session = Depends(get_session),
 ):
     """End a live stream."""
-    from ...infrastructure.repositories.models import LiveStreamDB
 
     stream = session.get(LiveStreamDB, stream_id)
     if not stream:
@@ -244,7 +248,6 @@ def join_as_guest(
     session: Session = Depends(get_session),
 ):
     """Join a live stream as a guest."""
-    from ...infrastructure.repositories.models import LiveStreamDB, LiveStreamGuestDB
 
     stream = session.get(LiveStreamDB, stream_id)
     if not stream:
@@ -280,7 +283,6 @@ def list_live_streams(
     session: Session = Depends(get_session),
 ):
     """List live streams, optionally filtered by status."""
-    from ...infrastructure.repositories.models import LiveStreamDB
 
     query = select(LiveStreamDB)
     if status:
@@ -314,7 +316,6 @@ def list_watch_parties(
     session: Session = Depends(get_session),
 ):
     """List watch parties, optionally filtered by status."""
-    from ...infrastructure.repositories.models import WatchPartyDB
 
     query = select(WatchPartyDB)
     if status_filter:
@@ -344,7 +345,6 @@ def create_watch_party(
     session: Session = Depends(get_session),
 ):
     """Create a watch party for viewing a video together."""
-    from ...infrastructure.repositories.models import WatchPartyDB
 
     video_id = request_body.get("video_id")
     title = request_body.get("title")
@@ -383,7 +383,6 @@ def join_watch_party(
     session: Session = Depends(get_session),
 ):
     """Join a watch party."""
-    from ...infrastructure.repositories.models import WatchPartyDB, WatchPartyParticipantDB
 
     party = session.get(WatchPartyDB, party_id)
     if not party:
@@ -423,7 +422,6 @@ def send_message(
     session: Session = Depends(get_session),
 ):
     """Send a direct message to another user."""
-    from ...infrastructure.repositories.models import DirectMessageDB
 
     receiver_id = request_body.get("receiver_id")
     content = request_body.get("content")
@@ -469,7 +467,6 @@ def get_conversations(
     session: Session = Depends(get_session),
 ):
     """Get all conversations for the current user."""
-    from ...infrastructure.repositories.models import DirectMessageDB
 
     messages = session.exec(
         select(DirectMessageDB).where(
@@ -506,7 +503,6 @@ def get_messages(
     session: Session = Depends(get_session),
 ):
     """Get messages in a conversation."""
-    from ...infrastructure.repositories.models import DirectMessageDB
 
     # Verify the user is part of this conversation
     messages = session.exec(

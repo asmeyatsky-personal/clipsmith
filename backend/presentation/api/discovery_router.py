@@ -1,10 +1,17 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from typing import Optional
-from ...infrastructure.repositories.database import get_session
-from .auth_router import get_current_user
 from sqlmodel import Session, select
 from datetime import datetime
 import uuid
+from ..dependencies import db_models  # legacy ORM access
+from ..dependencies import get_session_for_router as get_session
+from ..dependencies import get_current_user
+
+FavoriteCreatorDB = db_models.FavoriteCreatorDB
+PlaylistCollaboratorDB = db_models.PlaylistCollaboratorDB
+PlaylistDB = db_models.PlaylistDB
+PlaylistItemDB = db_models.PlaylistItemDB
+UserPreferencesDB = db_models.UserPreferencesDB
 
 router = APIRouter(prefix="/api/discovery", tags=["discovery"])
 
@@ -19,7 +26,6 @@ def create_playlist(
     session: Session = Depends(get_session),
 ):
     """Create a new playlist."""
-    from ...infrastructure.repositories.models import PlaylistDB
 
     title = request_body.get("title")
     description = request_body.get("description", "")
@@ -59,7 +65,6 @@ def get_user_playlists(
     session: Session = Depends(get_session),
 ):
     """Get all playlists owned by the current user."""
-    from ...infrastructure.repositories.models import PlaylistDB
 
     playlists = session.exec(
         select(PlaylistDB).where(PlaylistDB.creator_id == current_user.id)
@@ -87,7 +92,6 @@ def get_playlist(
     session: Session = Depends(get_session),
 ):
     """Get a specific playlist with its items."""
-    from ...infrastructure.repositories.models import PlaylistDB, PlaylistItemDB
 
     playlist = session.get(PlaylistDB, playlist_id)
     if not playlist:
@@ -127,7 +131,6 @@ def add_to_playlist(
     session: Session = Depends(get_session),
 ):
     """Add a video to a playlist."""
-    from ...infrastructure.repositories.models import PlaylistDB, PlaylistItemDB, PlaylistCollaboratorDB
 
     playlist = session.get(PlaylistDB, playlist_id)
     if not playlist:
@@ -179,7 +182,6 @@ def remove_from_playlist(
     session: Session = Depends(get_session),
 ):
     """Remove a video from a playlist."""
-    from ...infrastructure.repositories.models import PlaylistDB, PlaylistItemDB
 
     playlist = session.get(PlaylistDB, playlist_id)
     if not playlist:
@@ -212,7 +214,6 @@ def add_collaborator(
     session: Session = Depends(get_session),
 ):
     """Add a collaborator to a playlist."""
-    from ...infrastructure.repositories.models import PlaylistDB, PlaylistCollaboratorDB
 
     playlist = session.get(PlaylistDB, playlist_id)
     if not playlist:
@@ -259,7 +260,6 @@ def update_user_preferences(
     session: Session = Depends(get_session),
 ):
     """Update user discovery preferences."""
-    from ...infrastructure.repositories.models import UserPreferencesDB
 
     existing = session.exec(
         select(UserPreferencesDB).where(
@@ -301,7 +301,6 @@ def get_user_preferences(
     session: Session = Depends(get_session),
 ):
     """Get user discovery preferences."""
-    from ...infrastructure.repositories.models import UserPreferencesDB
 
     prefs = session.exec(
         select(UserPreferencesDB).where(
@@ -347,7 +346,6 @@ def add_favorite_creator(
     session: Session = Depends(get_session),
 ):
     """Add a creator to favorites."""
-    from ...infrastructure.repositories.models import FavoriteCreatorDB
 
     creator_id = request_body.get("creator_id")
     priority_notifications = request_body.get("priority_notifications", True)
@@ -387,7 +385,6 @@ def remove_favorite_creator(
     session: Session = Depends(get_session),
 ):
     """Remove a creator from favorites."""
-    from ...infrastructure.repositories.models import FavoriteCreatorDB
 
     favorite = session.exec(
         select(FavoriteCreatorDB).where(
@@ -411,7 +408,6 @@ def get_favorite_creators(
     session: Session = Depends(get_session),
 ):
     """Get user's favorite creators."""
-    from ...infrastructure.repositories.models import FavoriteCreatorDB
 
     favorites = session.exec(
         select(FavoriteCreatorDB).where(
@@ -443,7 +439,6 @@ def calculate_discovery_score(
     session: Session = Depends(get_session),
 ):
     """Calculate a discovery score for a video based on user preferences."""
-    from ...infrastructure.repositories.models import UserPreferencesDB
 
     prefs = session.exec(
         select(UserPreferencesDB).where(

@@ -5,7 +5,7 @@ in import-linter. It wires concrete adapters to ports for use cases.
 All other presentation modules MUST import from here, never directly from
 infrastructure.
 """
-from fastapi import Depends
+from fastapi import Depends, Request
 from sqlmodel import Session
 
 from ..application.services.two_factor_service import TwoFactorService
@@ -46,6 +46,28 @@ from ..domain.ports.storage_port import StoragePort
 from ..infrastructure.adapters.audit_log import SQLModelAuditLog
 from ..infrastructure.adapters.email_adapter import get_email_adapter
 from ..infrastructure.adapters.storage_factory import get_storage_adapter
+# Legacy re-exports for routers that haven't yet been thinned to use cases.
+# These come through the composition root (this module) so the import-linter
+# contract is preserved; the goal is to eliminate them as each router ships
+# with proper use cases.
+from ..infrastructure.repositories import models as db_models  # noqa: F401
+from ..infrastructure.repositories.database import get_session as _raw_get_session
+from ..infrastructure.repositories.sqlite_caption_repo import SQLiteCaptionRepository
+from ..infrastructure.repositories.sqlite_community_repo import SQLiteCommunityRepository
+from ..infrastructure.repositories.sqlite_compliance_repo import SQLiteComplianceRepository
+from ..infrastructure.repositories.sqlite_course_repo import SQLiteCourseRepository
+from ..infrastructure.repositories.sqlite_discovery_repo import SQLiteDiscoveryRepository
+from ..infrastructure.repositories.sqlite_engagement_repo import SQLiteEngagementRepository
+from ..infrastructure.repositories.sqlite_social_repo import SQLiteSocialRepository
+from ..infrastructure.repositories.sqlite_tip_repo import SQLiteTipRepository
+from ..infrastructure.repositories.sqlite_video_editor_repo import (
+    SQLiteVideoEditorRepository,
+)
+from ..infrastructure.queue import get_video_queue as _raw_get_video_queue
+from ..infrastructure.queue.tasks import (
+    generate_captions_task as _raw_generate_captions_task,
+    process_video_task as _raw_process_video_task,
+)
 from ..infrastructure.queue.video_queue_adapter import RQVideoQueueAdapter
 from ..infrastructure.repositories.database import get_session
 from ..infrastructure.repositories.sqlite_auth_security_repo import (
@@ -126,6 +148,96 @@ def get_payment_repo(
 
 def get_audit_log(session: Session = Depends(get_session)) -> AuditLogPort:
     return SQLModelAuditLog(session)
+
+
+# --- Legacy router providers (transitional) ---
+
+
+def get_session_for_router(session: Session = Depends(get_session)) -> Session:
+    """Re-export of the SQLModel session for routers with inline queries.
+    Use sparingly — prefer specific repos. Each call site should migrate to
+    a use case + repo method as the corresponding feature ships.
+    """
+    return session
+
+
+def get_caption_repo(session: Session = Depends(get_session)):
+    return SQLiteCaptionRepository(session)
+
+
+def get_tip_repo(session: Session = Depends(get_session)):
+    return SQLiteTipRepository(session)
+
+
+def get_community_repo(session: Session = Depends(get_session)):
+    return SQLiteCommunityRepository(session)
+
+
+def get_compliance_repo(session: Session = Depends(get_session)):
+    return SQLiteComplianceRepository(session)
+
+
+def get_course_repo(session: Session = Depends(get_session)):
+    return SQLiteCourseRepository(session)
+
+
+def get_discovery_repo(session: Session = Depends(get_session)):
+    return SQLiteDiscoveryRepository(session)
+
+
+def get_engagement_repo(session: Session = Depends(get_session)):
+    return SQLiteEngagementRepository(session)
+
+
+def get_social_repo(session: Session = Depends(get_session)):
+    return SQLiteSocialRepository(session)
+
+
+def get_video_editor_repo(session: Session = Depends(get_session)):
+    return SQLiteVideoEditorRepository(session)
+
+
+def get_video_processing_queue():
+    """Returns the RQ video processing queue. Use for direct .enqueue() calls
+    until upload/captions paths are routed through VideoQueuePort."""
+    return _raw_get_video_queue()
+
+
+# Re-exported for routers that still need direct task references.
+generate_captions_task = _raw_generate_captions_task
+process_video_task = _raw_process_video_task
+
+# Legacy class re-exports for routers with inline `SQLiteXRepo(session)` /
+# `JWTAdapter.verify_token(...)` calls. To be removed as routers move to
+# proper port injection.
+from ..infrastructure.repositories.sqlite_caption_repo import (  # noqa: E402, F401
+    SQLiteCaptionRepository,
+)
+from ..infrastructure.repositories.sqlite_hashtag_repo import (  # noqa: E402, F401
+    SQLiteHashtagRepository,
+)
+from ..infrastructure.repositories.sqlite_interaction_repo import (  # noqa: E402, F401
+    SQLiteInteractionRepository,
+)
+from ..infrastructure.repositories.sqlite_payment_repo import (  # noqa: E402, F401
+    SQLitePaymentRepository,
+)
+from ..infrastructure.repositories.sqlite_tip_repo import (  # noqa: E402, F401
+    SQLiteTipRepository,
+)
+from ..infrastructure.repositories.sqlite_user_repo import (  # noqa: E402, F401
+    SQLiteUserRepository,
+)
+from ..infrastructure.repositories.sqlite_video_editor_repo import (  # noqa: E402, F401
+    SQLiteVideoEditorRepository,
+)
+from ..infrastructure.repositories.sqlite_video_repo import (  # noqa: E402, F401
+    SQLiteVideoRepository,
+)
+from ..infrastructure.security.jwt_adapter import JWTAdapter  # noqa: E402, F401
+from ..infrastructure.security.security_adapter import (  # noqa: E402, F401
+    SecurityAdapter,
+)
 
 
 # --- Adapter / port providers ---
@@ -248,7 +360,7 @@ def get_2fa_login_verify_use_case(
 
 
 def get_current_user(
-    request,
+    request: Request,
     user_repo: UserRepositoryPort = Depends(get_user_repo),
     jwt: JWTPort = Depends(get_jwt),
 ):

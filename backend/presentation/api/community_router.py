@@ -1,10 +1,19 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from typing import Optional
-from ...infrastructure.repositories.database import get_session
-from .auth_router import get_current_user
 from sqlmodel import Session, select
 from datetime import datetime, UTC
 import uuid
+from ..dependencies import db_models  # legacy ORM access
+from ..dependencies import get_session_for_router as get_session
+from ..dependencies import get_current_user
+
+CircleDB = db_models.CircleDB
+CircleMemberDB = db_models.CircleMemberDB
+CommunityGroupDB = db_models.CommunityGroupDB
+CommunityMemberDB = db_models.CommunityMemberDB
+DiscussionPostDB = db_models.DiscussionPostDB
+EventAttendeeDB = db_models.EventAttendeeDB
+EventDB = db_models.EventDB
 
 router = APIRouter(prefix="/api/community", tags=["community"])
 
@@ -34,7 +43,6 @@ def create_circle(
     }
 
     # Store circle in session (placeholder until model is created)
-    from ...infrastructure.repositories.models import CircleDB
 
     db_circle = CircleDB(
         id=circle["id"],
@@ -54,7 +62,6 @@ def get_user_circles(
     session: Session = Depends(get_session),
 ):
     """Get all circles owned by the current user."""
-    from ...infrastructure.repositories.models import CircleDB
 
     circles = session.exec(
         select(CircleDB).where(CircleDB.user_id == current_user.id)
@@ -83,7 +90,6 @@ def add_to_circle(
     session: Session = Depends(get_session),
 ):
     """Add a member to a circle."""
-    from ...infrastructure.repositories.models import CircleDB, CircleMemberDB
 
     circle = session.get(CircleDB, circle_id)
     if not circle:
@@ -126,7 +132,6 @@ def remove_from_circle(
     session: Session = Depends(get_session),
 ):
     """Remove a member from a circle."""
-    from ...infrastructure.repositories.models import CircleDB, CircleMemberDB
 
     circle = session.get(CircleDB, circle_id)
     if not circle:
@@ -158,7 +163,6 @@ def get_circle_members(
     session: Session = Depends(get_session),
 ):
     """Get all members of a circle."""
-    from ...infrastructure.repositories.models import CircleDB, CircleMemberDB
 
     circle = session.get(CircleDB, circle_id)
     if not circle:
@@ -191,7 +195,6 @@ def create_group(
     session: Session = Depends(get_session),
 ):
     """Create a new community group."""
-    from ...infrastructure.repositories.models import CommunityGroupDB
 
     name = request_body.get("name")
     description = request_body.get("description", "")
@@ -231,7 +234,6 @@ def list_groups(
     session: Session = Depends(get_session),
 ):
     """List public community groups."""
-    from ...infrastructure.repositories.models import CommunityGroupDB
 
     groups = session.exec(
         select(CommunityGroupDB)
@@ -262,7 +264,6 @@ def get_group(
     session: Session = Depends(get_session),
 ):
     """Get details of a specific group."""
-    from ...infrastructure.repositories.models import CommunityGroupDB
 
     group = session.get(CommunityGroupDB, group_id)
     if not group:
@@ -289,7 +290,6 @@ def join_group(
     session: Session = Depends(get_session),
 ):
     """Join a community group."""
-    from ...infrastructure.repositories.models import CommunityGroupDB, CommunityMemberDB
 
     group = session.get(CommunityGroupDB, group_id)
     if not group:
@@ -324,7 +324,6 @@ def leave_group(
     session: Session = Depends(get_session),
 ):
     """Leave a community group."""
-    from ...infrastructure.repositories.models import CommunityMemberDB
 
     membership = session.exec(
         select(CommunityMemberDB).where(
@@ -350,7 +349,6 @@ def create_discussion_post(
     session: Session = Depends(get_session),
 ):
     """Create a discussion post in a group."""
-    from ...infrastructure.repositories.models import CommunityGroupDB, CommunityMemberDB, DiscussionPostDB
 
     group = session.get(CommunityGroupDB, group_id)
     if not group:
@@ -404,7 +402,6 @@ def get_discussion_posts(
     session: Session = Depends(get_session),
 ):
     """Get discussion posts for a group."""
-    from ...infrastructure.repositories.models import CommunityGroupDB, DiscussionPostDB
 
     group = session.get(CommunityGroupDB, group_id)
     if not group:
@@ -443,7 +440,6 @@ def create_event(
     session: Session = Depends(get_session),
 ):
     """Create a community event."""
-    from ...infrastructure.repositories.models import EventDB
 
     title = request_body.get("title")
     description = request_body.get("description", "")
@@ -506,7 +502,6 @@ def get_events(
     session: Session = Depends(get_session),
 ):
     """Get community events, optionally filtered by group."""
-    from ...infrastructure.repositories.models import EventDB
 
     query = select(EventDB)
     if group_id:
@@ -543,7 +538,6 @@ def rsvp_event(
     session: Session = Depends(get_session),
 ):
     """RSVP to a community event."""
-    from ...infrastructure.repositories.models import EventDB, EventAttendeeDB
 
     event = session.get(EventDB, event_id)
     if not event:

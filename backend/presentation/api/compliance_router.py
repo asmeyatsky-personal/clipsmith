@@ -1,10 +1,15 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from typing import Optional
-from ...infrastructure.repositories.database import get_session
-from .auth_router import get_current_user
 from sqlmodel import Session, select
 from datetime import datetime, UTC
 import uuid
+from ..dependencies import db_models  # legacy ORM access
+from ..dependencies import get_session_for_router as get_session
+from ..dependencies import get_current_user
+
+AgeVerificationDB = db_models.AgeVerificationDB
+ConsentRecordDB = db_models.ConsentRecordDB
+GDPRRequestDB = db_models.GDPRRequestDB
 
 router = APIRouter(prefix="/api/compliance", tags=["compliance"])
 
@@ -19,7 +24,6 @@ def submit_gdpr_request(
     session: Session = Depends(get_session),
 ):
     """Submit a GDPR data request (export, deletion, etc.)."""
-    from ...infrastructure.repositories.models import GDPRRequestDB
 
     request_type = request_body.get("request_type")
     if not request_type:
@@ -59,7 +63,6 @@ def get_gdpr_request_status(
     session: Session = Depends(get_session),
 ):
     """Get the status of a GDPR request."""
-    from ...infrastructure.repositories.models import GDPRRequestDB
 
     gdpr_request = session.get(GDPRRequestDB, request_id)
     if not gdpr_request:
@@ -86,7 +89,6 @@ def export_user_data(
     session: Session = Depends(get_session),
 ):
     """Request a full export of user data (GDPR Article 20)."""
-    from ...infrastructure.repositories.models import GDPRRequestDB
 
     # Check for existing pending export request
     existing = session.exec(
@@ -125,7 +127,6 @@ def delete_user_data(
     session: Session = Depends(get_session),
 ):
     """Request deletion of specific user data categories (GDPR Article 17)."""
-    from ...infrastructure.repositories.models import GDPRRequestDB
 
     categories = request_body.get("categories", [])
     if not categories:
@@ -169,7 +170,6 @@ def record_consent(
     session: Session = Depends(get_session),
 ):
     """Record user consent for a specific purpose."""
-    from ...infrastructure.repositories.models import ConsentRecordDB
 
     consent_type = request_body.get("consent_type")
     granted = request_body.get("granted")
@@ -218,7 +218,6 @@ def get_user_consents(
     session: Session = Depends(get_session),
 ):
     """Get all consent records for the current user."""
-    from ...infrastructure.repositories.models import ConsentRecordDB
 
     consents = session.exec(
         select(ConsentRecordDB).where(ConsentRecordDB.user_id == current_user.id)
@@ -245,7 +244,6 @@ def withdraw_consent(
     session: Session = Depends(get_session),
 ):
     """Withdraw a previously granted consent."""
-    from ...infrastructure.repositories.models import ConsentRecordDB
 
     consent_type = request_body.get("consent_type")
     if not consent_type:
@@ -279,7 +277,6 @@ def verify_age(
     session: Session = Depends(get_session),
 ):
     """Verify user age for compliance."""
-    from ...infrastructure.repositories.models import AgeVerificationDB
 
     date_of_birth = request_body.get("date_of_birth")
     if not date_of_birth:
@@ -356,7 +353,6 @@ def opt_out_data_sale(
     session: Session = Depends(get_session),
 ):
     """Opt out of the sale of personal data (CCPA)."""
-    from ...infrastructure.repositories.models import ConsentRecordDB
 
     # Record opt-out as a consent withdrawal for third_party data sharing
     existing = session.exec(

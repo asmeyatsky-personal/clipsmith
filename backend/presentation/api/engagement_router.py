@@ -1,10 +1,22 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from typing import Optional
-from ...infrastructure.repositories.database import get_session
-from .auth_router import get_current_user
 from sqlmodel import Session, select
 from datetime import datetime
 import uuid
+from ..dependencies import db_models  # legacy ORM access
+from ..dependencies import get_session_for_router as get_session
+from ..dependencies import get_current_user
+
+BadgeDB = db_models.BadgeDB
+ChallengeDB = db_models.ChallengeDB
+ChallengeParticipantDB = db_models.ChallengeParticipantDB
+ChapterMarkerDB = db_models.ChapterMarkerDB
+PollDB = db_models.PollDB
+PollOptionDB = db_models.PollOptionDB
+PollVoteDB = db_models.PollVoteDB
+ProductTagDB = db_models.ProductTagDB
+UserBadgeDB = db_models.UserBadgeDB
+VideoLinkDB = db_models.VideoLinkDB
 
 router = APIRouter(prefix="/api/engagement", tags=["engagement"])
 
@@ -19,7 +31,6 @@ def create_poll(
     session: Session = Depends(get_session),
 ):
     """Create a poll on a video."""
-    from ...infrastructure.repositories.models import PollDB, PollOptionDB
 
     video_id = request_body.get("video_id")
     question = request_body.get("question")
@@ -82,7 +93,6 @@ def vote_on_poll(
     session: Session = Depends(get_session),
 ):
     """Vote on a poll option."""
-    from ...infrastructure.repositories.models import PollDB, PollVoteDB
 
     poll = session.get(PollDB, poll_id)
     if not poll:
@@ -121,7 +131,6 @@ def get_poll(
     session: Session = Depends(get_session),
 ):
     """Get poll details with vote counts."""
-    from ...infrastructure.repositories.models import PollDB, PollOptionDB, PollVoteDB
 
     poll = session.get(PollDB, poll_id)
     if not poll:
@@ -164,7 +173,6 @@ def get_polls_for_video(
     session: Session = Depends(get_session),
 ):
     """Get all polls for a video."""
-    from ...infrastructure.repositories.models import PollDB
 
     polls = session.exec(
         select(PollDB).where(PollDB.video_id == video_id)
@@ -195,7 +203,6 @@ def create_chapter_marker(
     session: Session = Depends(get_session),
 ):
     """Create a chapter marker on a video."""
-    from ...infrastructure.repositories.models import ChapterMarkerDB
 
     title = request_body.get("title")
     start_time = request_body.get("start_time")
@@ -235,7 +242,6 @@ def get_chapter_markers(
     session: Session = Depends(get_session),
 ):
     """Get all chapter markers for a video."""
-    from ...infrastructure.repositories.models import ChapterMarkerDB
 
     markers = session.exec(
         select(ChapterMarkerDB)
@@ -267,7 +273,6 @@ def add_product_tag(
     session: Session = Depends(get_session),
 ):
     """Add a product tag to a video."""
-    from ...infrastructure.repositories.models import ProductTagDB
 
     product_name = request_body.get("product_name")
     product_url = request_body.get("product_url")
@@ -309,7 +314,6 @@ def get_product_tags(
     session: Session = Depends(get_session),
 ):
     """Get all product tags for a video."""
-    from ...infrastructure.repositories.models import ProductTagDB
 
     tags = session.exec(
         select(ProductTagDB).where(ProductTagDB.video_id == video_id)
@@ -337,7 +341,6 @@ def track_product_click(
     session: Session = Depends(get_session),
 ):
     """Track a click on a product tag."""
-    from ...infrastructure.repositories.models import ProductTagDB
 
     tag = session.get(ProductTagDB, tag_id)
     if not tag:
@@ -361,7 +364,6 @@ def add_video_link(
     session: Session = Depends(get_session),
 ):
     """Add a link to a video."""
-    from ...infrastructure.repositories.models import VideoLinkDB
 
     title = request_body.get("title")
     url = request_body.get("url")
@@ -401,7 +403,6 @@ def get_video_links(
     session: Session = Depends(get_session),
 ):
     """Get all links for a video."""
-    from ...infrastructure.repositories.models import VideoLinkDB
 
     links = session.exec(
         select(VideoLinkDB).where(VideoLinkDB.video_id == video_id)
@@ -428,7 +429,6 @@ def track_link_click(
     session: Session = Depends(get_session),
 ):
     """Track a click on a video link."""
-    from ...infrastructure.repositories.models import VideoLinkDB
 
     link = session.get(VideoLinkDB, link_id)
     if not link:
@@ -451,7 +451,6 @@ def create_challenge(
     session: Session = Depends(get_session),
 ):
     """Create a new challenge."""
-    from ...infrastructure.repositories.models import ChallengeDB
 
     hashtag_id = request_body.get("hashtag_id")
     title = request_body.get("title")
@@ -500,7 +499,6 @@ def join_challenge(
     session: Session = Depends(get_session),
 ):
     """Join a challenge with a video submission."""
-    from ...infrastructure.repositories.models import ChallengeDB, ChallengeParticipantDB
 
     challenge = session.get(ChallengeDB, challenge_id)
     if not challenge:
@@ -541,7 +539,6 @@ def get_active_challenges(
     session: Session = Depends(get_session),
 ):
     """Get active challenges."""
-    from ...infrastructure.repositories.models import ChallengeDB
 
     challenges = session.exec(
         select(ChallengeDB)
@@ -575,7 +572,6 @@ def get_user_badges(
     session: Session = Depends(get_session),
 ):
     """Get badges earned by a user."""
-    from ...infrastructure.repositories.models import UserBadgeDB, BadgeDB
 
     user_badges = session.exec(
         select(UserBadgeDB).where(UserBadgeDB.user_id == user_id)

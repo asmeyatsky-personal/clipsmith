@@ -17,7 +17,7 @@ class TestJWTSecurityFixes:
 
     def test_jwt_secret_loaded_from_env(self):
         """JWT_SECRET_KEY must be loaded from environment, not hardcoded."""
-        from infrastructure.config import get_settings
+        from backend.infrastructure.config import get_settings
 
         settings = get_settings()
         assert settings.jwt_secret_key is not None
@@ -189,7 +189,8 @@ class TestUploadVideoFix:
         from backend.application.use_cases.upload_video import UploadVideoUseCase
 
         source = inspect.getsource(UploadVideoUseCase.execute)
-        enqueue_count = source.count("self._video_queue.enqueue(")
+        # After Phase 0.2 refactor: queue is a VideoQueuePort with enqueue_video_processing()
+        enqueue_count = source.count("self._video_queue.enqueue_video_processing(")
         assert enqueue_count == 1, f"Expected 1 enqueue call, found {enqueue_count}"
 
 
@@ -374,15 +375,17 @@ class TestAuthTokenExpiration:
     """Tests for Finding #31: JWT expiration reduced."""
 
     def test_token_expiration_is_30_minutes(self):
-        """Token expiration should be 30 minutes, not 60."""
-        import inspect
+        """Token expiration should be 30 minutes (1800s)."""
         from backend.application.use_cases.authenticate_user import (
             AuthenticateUserUseCase,
         )
 
-        source = inspect.getsource(AuthenticateUserUseCase.execute)
-        assert "minutes=30" in source
-        assert "minutes=60" not in source
+        # Phase 0.2 refactor: use case takes access_token_seconds parameter; default 1800.
+        import inspect
+
+        sig = inspect.signature(AuthenticateUserUseCase.__init__)
+        default = sig.parameters["access_token_seconds"].default
+        assert default == 1800, f"Expected 30min/1800s default, got {default}"
 
 
 class TestDebugFileRemoved:

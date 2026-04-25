@@ -13,8 +13,15 @@ from fastapi import (
 from typing import Annotated, List
 from fastapi.security import OAuth2PasswordBearer
 
-from ...infrastructure.queue import get_video_queue
-from ...infrastructure.queue.tasks import generate_captions_task
+from ...infrastructure.validation import (
+    TitleField,
+    DescriptionField,
+    CommentField,
+    MAX_TITLE_LENGTH,
+    MAX_DESCRIPTION_LENGTH,
+    MAX_COMMENT_LENGTH,
+)
+
 
 from ...domain.ports.repository_ports import (
     VideoRepositoryPort,
@@ -24,12 +31,6 @@ from ...domain.ports.repository_ports import (
     HashtagRepositoryPort,
 )
 from ...domain.ports.storage_port import StoragePort
-from ...infrastructure.repositories.sqlite_video_repo import SQLiteVideoRepository
-from ...infrastructure.repositories.sqlite_user_repo import SQLiteUserRepository
-from ...infrastructure.repositories.sqlite_tip_repo import SQLiteTipRepository
-from ...infrastructure.repositories.sqlite_caption_repo import SQLiteCaptionRepository
-from ...infrastructure.adapters.storage_factory import get_storage_adapter
-from ...infrastructure.repositories.sqlite_hashtag_repo import SQLiteHashtagRepository
 from ...application.use_cases.upload_video import UploadVideoUseCase
 from ...application.use_cases.list_videos import ListVideosUseCase
 from ...application.use_cases.get_video_by_id import GetVideoByIdUseCase
@@ -41,26 +42,18 @@ from ...application.dtos.video_dto import (
 )
 from ...application.dtos.tip_dto import TipCreateDTO, TipResponseDTO
 from ...application.dtos.caption_dto import CaptionResponseDTO
-from ...infrastructure.security.jwt_adapter import JWTAdapter
-from ...infrastructure.validation import (
-    TitleField,
-    DescriptionField,
-    CommentField,
-    MAX_TITLE_LENGTH,
-    MAX_DESCRIPTION_LENGTH,
-    MAX_COMMENT_LENGTH,
-)
-
 router = APIRouter(prefix="/videos", tags=["videos"])
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
 # Dependency Injection Helpers
-from ...infrastructure.repositories.database import get_session
 from sqlmodel import Session
-from ...infrastructure.repositories.sqlite_interaction_repo import (
-    SQLiteInteractionRepository,
-)
 from ...application.dtos.interaction_dto import CommentRequestDTO, CommentResponseDTO
+from ..dependencies import db_models  # legacy ORM access
+from ..dependencies import SQLiteVideoRepository, SQLiteHashtagRepository, SQLiteInteractionRepository, SQLiteTipRepository, SQLiteCaptionRepository
+from ..dependencies import JWTAdapter, SQLiteUserRepository
+from ..dependencies import get_session_for_router as get_session
+from ..dependencies import get_current_user
+from ..dependencies import get_jwt as _get_jwt_singleton
 
 
 def get_video_repo(session: Session = Depends(get_session)) -> VideoRepositoryPort:

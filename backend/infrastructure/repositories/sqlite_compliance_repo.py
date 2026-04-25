@@ -172,8 +172,11 @@ class SQLiteComplianceRepository:
         }
         user_col = user_column_map.get(table_name, "user_id")
 
+        # B608: table_name and user_col are constrained to values in the
+        # whitelist maps above; user-controlled `category` selects only the
+        # map key. The user_id is parameterized.
         self.session.execute(
-            text(f"DELETE FROM {table_name} WHERE {user_col} = :uid"),
+            text(f"DELETE FROM {table_name} WHERE {user_col} = :uid"),  # nosec B608
             {"uid": user_id},
         )
         self.session.commit()

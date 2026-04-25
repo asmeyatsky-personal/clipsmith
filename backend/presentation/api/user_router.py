@@ -1,3 +1,5 @@
+from typing import Annotated
+
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from ...application.dtos.follow_dto import FollowResponseDTO, FollowStatusDTO

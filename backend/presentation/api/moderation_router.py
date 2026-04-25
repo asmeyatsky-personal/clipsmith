@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import Annotated, List, Optional
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
@@ -43,7 +43,12 @@ def require_moderator_role(current_user: dict = None):
 
     # In a real system, you'd check user roles/permissions
     # For now, we'll use a simple check
-    if not current_user.get("is_moderator", False):
+    is_moderator = (
+        current_user.get("is_moderator", False)
+        if isinstance(current_user, dict)
+        else getattr(current_user, "is_moderator", False)
+    )
+    if not is_moderator:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Moderator access required",
