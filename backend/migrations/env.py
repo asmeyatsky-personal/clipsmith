@@ -8,10 +8,19 @@ from __future__ import annotations
 
 import os
 from logging.config import fileConfig
+from pathlib import Path
 
 from alembic import context
 from sqlalchemy import engine_from_config, pool
 from sqlmodel import SQLModel
+
+# Load .env from the backend dir so `alembic` works without manual export.
+try:
+    from dotenv import load_dotenv
+
+    load_dotenv(Path(__file__).resolve().parent.parent / ".env")
+except ImportError:
+    pass
 
 # Make sure all models are imported so metadata is populated.
 import backend.infrastructure.repositories.models  # noqa: F401
