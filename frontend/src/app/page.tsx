@@ -2,6 +2,7 @@
 
 import { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/lib/auth/auth-store';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
@@ -11,6 +12,7 @@ import CreatorDashboard from '@/components/CreatorDashboard';
 
 export default function Home() {
     const { user } = useAuthStore();
+    const router = useRouter();
     const [mounted, setMounted] = useState(false);
 
     useEffect(() => {
@@ -18,7 +20,23 @@ export default function Home() {
         setMounted(true);
     }, []);
 
+    // Authenticated users skip the marketing landing and go straight to
+    // the immersive feed. This is also the Capacitor app's default route
+    // for logged-in users.
+    useEffect(() => {
+        if (mounted && user) {
+            router.replace('/feed');
+        }
+    }, [mounted, user, router]);
+
     if (!mounted) return null;
+    if (user) {
+        return (
+            <div className="flex items-center justify-center min-h-screen">
+                <Loader2 className="animate-spin text-blue-500" size={32} />
+            </div>
+        );
+    }
 
     return (
         <div className="flex flex-col gap-20 pb-40 overflow-hidden">
@@ -61,27 +79,19 @@ export default function Home() {
                         transition={{ delay: 0.3 }}
                         className="flex flex-col sm:flex-row gap-4 items-center"
                     >
-                        {!user ? (
-                            <>
-                                <Link href="/register">
-                                    <Button size="lg" className="h-14 px-8 rounded-full text-lg bg-blue-600 hover:bg-blue-700 shadow-xl shadow-blue-500/20">
-                                        Get Started Free
-                                        <ArrowRight className="ml-2" />
-                                    </Button>
-                                </Link>
-                                <Button size="lg" variant="outline" className="h-14 px-8 rounded-full text-lg border-zinc-200 dark:border-zinc-800">
-                                    Watch the Demo
-                                    <Play className="ml-2 fill-current" size={16} />
-                                </Button>
-                            </>
-                        ) : (
-                            <Link href={`/profile?u=${user.username}`}>
-                                <Button size="lg" className="h-14 px-8 rounded-full text-lg bg-zinc-900 dark:bg-white text-white dark:text-black">
-                                    Go to Dashboard
-                                    <ArrowRight className="ml-2" />
-                                </Button>
-                            </Link>
-                        )}
+                        {/* This page only renders for anonymous users (authed users
+                            are redirected to /feed by the useEffect above), so we
+                            always show the marketing CTAs. */}
+                        <Link href="/register">
+                            <Button size="lg" className="h-14 px-8 rounded-full text-lg bg-blue-600 hover:bg-blue-700 shadow-xl shadow-blue-500/20">
+                                Get Started Free
+                                <ArrowRight className="ml-2" />
+                            </Button>
+                        </Link>
+                        <Button size="lg" variant="outline" className="h-14 px-8 rounded-full text-lg border-zinc-200 dark:border-zinc-800">
+                            Watch the Demo
+                            <Play className="ml-2 fill-current" size={16} />
+                        </Button>
                     </motion.div>
                 </div>
 

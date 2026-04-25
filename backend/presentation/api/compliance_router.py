@@ -5,7 +5,8 @@ from datetime import datetime, UTC
 import uuid
 from ..dependencies import db_models  # legacy ORM access
 from ..dependencies import get_session_for_router as get_session
-from ..dependencies import get_current_user
+from ..dependencies import get_current_user, get_compliance_repo, get_audit_log
+from ...application.use_cases.process_gdpr_deletion import ProcessGDPRDeletionUseCase
 
 AgeVerificationDB = db_models.AgeVerificationDB
 ConsentRecordDB = db_models.ConsentRecordDB
@@ -153,9 +154,28 @@ def delete_user_data(
     session.add(delete_request)
     session.commit()
 
+    # Execute the deletion synchronously (GDPR Art. 17). The user is being
+    # logged out anyway, so blocking the request is the right UX.
+    compliance_repo = get_compliance_repo(session)
+    audit = get_audit_log(session)
+    use_case = ProcessGDPRDeletionUseCase(compliance_repo, audit)
+    try:
+        result = use_case.execute(
+            user_id=current_user.id,
+            request_id=delete_request.id,
+            categories=categories,
+        )
+    except Exception as e:
+        # Don't leak internals; surface a generic error.
+        raise HTTPException(
+            status_code=500,
+            detail=f"Deletion failed; request {delete_request.id} kept pending for retry",
+        ) from e
+
     return {
         "success": True,
-        "message": "Data deletion request submitted for categories: " + ", ".join(categories),
+        "message": "Account data deleted for categories: "
+        + ", ".join(result["deleted_categories"]),
         "request_id": delete_request.id,
     }
 

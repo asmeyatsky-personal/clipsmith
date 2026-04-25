@@ -5,6 +5,7 @@ from ...domain.ports.repository_ports import (
     InteractionRepositoryPort,
     UserRepositoryPort,
 )
+from ...domain.ports.user_block_port import UserBlockRepositoryPort
 from ...domain.entities.video import Video
 from ..services.recommendation_engine import RecommendationEngine
 
@@ -17,11 +18,22 @@ class GetPersonalizedFeedUseCase:
         video_repo: VideoRepositoryPort,
         interaction_repo: InteractionRepositoryPort,
         user_repo: UserRepositoryPort,
+        user_block_repo: Optional[UserBlockRepositoryPort] = None,
     ):
         self.video_repo = video_repo
         self.interaction_repo = interaction_repo
         self.user_repo = user_repo
+        self.user_block_repo = user_block_repo
         self.recommendation_engine = RecommendationEngine()
+
+    def _blocked_creator_ids(self, viewer_id: str) -> Set[str]:
+        """Creator IDs the viewer has blocked plus those who have blocked the viewer."""
+        if self.user_block_repo is None:
+            return set()
+        blocked = set(self.user_block_repo.list_blocked_ids(viewer_id))
+        # Also hide content from users who blocked us — Apple Guideline 1.2
+        blocked.update(self.user_block_repo.list_blockers_of(viewer_id))
+        return blocked
 
     def execute(
         self,
@@ -75,6 +87,11 @@ class GetPersonalizedFeedUseCase:
                     user_following=user_following,
                     include_trending=(feed_type == "foryou"),
                 )
+
+        # Filter out blocked users (both directions). Apple Guideline 1.2.
+        blocked = self._blocked_creator_ids(user_id)
+        if blocked:
+            feed_videos = [v for v in feed_videos if v.creator_id not in blocked]
 
         # Apply pagination
         start_idx = (page - 1) * page_size

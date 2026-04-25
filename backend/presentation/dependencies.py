@@ -46,8 +46,10 @@ from ..domain.ports.payment_repository_port import PaymentRepositoryPort
 from ..domain.ports.security_port import JWTPort, PasswordHelperPort
 from ..domain.ports.storage_port import StoragePort
 from ..domain.ports.push_port import DeviceTokenRepositoryPort, PushSenderPort
+from ..domain.ports.text_moderation_port import TextModerationPort
 from ..domain.ports.user_block_port import UserBlockRepositoryPort
 from ..infrastructure.adapters.apns_push_adapter import get_push_sender
+from ..infrastructure.adapters.openai_moderation_adapter import get_text_moderator
 from ..infrastructure.adapters.audit_log import SQLModelAuditLog
 from ..infrastructure.adapters.email_adapter import get_email_adapter
 from ..infrastructure.adapters.storage_factory import get_storage_adapter
@@ -347,13 +349,28 @@ def get_authenticate_use_case(
     return AuthenticateUserUseCase(user_repo, password, jwt)
 
 
+def get_text_moderator_dep() -> TextModerationPort:
+    return get_text_moderator()
+
+
 def get_upload_video_use_case(
     video_repo: VideoRepositoryPort = Depends(get_video_repo),
     storage: StoragePort = Depends(get_storage),
     hashtag_repo: HashtagRepositoryPort = Depends(get_hashtag_repo),
     queue: VideoQueuePort = Depends(get_video_queue),
+    text_moderator: TextModerationPort = Depends(get_text_moderator_dep),
+    moderation_repo: ContentModerationRepositoryPort = Depends(get_content_moderation_repo),
+    audit: AuditLogPort = Depends(get_audit_log),
 ) -> UploadVideoUseCase:
-    return UploadVideoUseCase(video_repo, storage, hashtag_repo, queue)
+    return UploadVideoUseCase(
+        video_repo,
+        storage,
+        hashtag_repo,
+        queue,
+        text_moderator=text_moderator,
+        moderation_repo=moderation_repo,
+        audit_log=audit,
+    )
 
 
 def get_request_password_reset_use_case(

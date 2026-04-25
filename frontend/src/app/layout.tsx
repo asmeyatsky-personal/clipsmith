@@ -12,8 +12,8 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-import { Navbar } from "@/components/layout/navbar";
 import { AuthProvider } from "@/components/auth-provider";
+import { ChromeShell } from "@/components/layout/chrome-shell";
 
 export const metadata: Metadata = {
   title: "clipsmith | Social Video Platform",
@@ -38,10 +38,7 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-zinc-50 dark:bg-zinc-950 text-zinc-950 dark:text-zinc-50`}
       >
         <AuthProvider>
-          <Navbar />
-          <main className="pt-24 min-h-screen">
-            {children}
-          </main>
+          <ChromeShell>{children}</ChromeShell>
         </AuthProvider>
       </body>
     </html>

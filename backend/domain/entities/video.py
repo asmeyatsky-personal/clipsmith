@@ -12,6 +12,7 @@ class VideoStatus(str, Enum):
     PROCESSING = "PROCESSING"
     READY = "READY"
     FAILED = "FAILED"
+    REJECTED = "REJECTED"  # auto-rejected by moderation; not visible in feeds
 
 
 @dataclass(frozen=True, kw_only=True)
