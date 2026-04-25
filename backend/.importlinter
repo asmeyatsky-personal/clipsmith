@@ -1,0 +1,62 @@
+[importlinter]
+root_package = backend
+include_external_packages = True
+
+[importlinter:contract:layered-architecture]
+name = Clean Architecture layered contract
+type = layers
+layers =
+    backend.presentation
+    backend.infrastructure
+    backend.application
+    backend.domain
+
+[importlinter:contract:domain-no-sdks]
+name = Domain must not import third-party SDKs or frameworks
+type = forbidden
+source_modules =
+    backend.domain
+forbidden_modules =
+    fastapi
+    sqlalchemy
+    sqlmodel
+    starlette
+    boto3
+    botocore
+    redis
+    celery
+    sentry_sdk
+    assemblyai
+    stripe
+    httpx
+    requests
+    passlib
+    jose
+    argon2
+
+[importlinter:contract:application-no-infra]
+name = Application must not import infrastructure or presentation
+type = forbidden
+source_modules =
+    backend.application
+forbidden_modules =
+    backend.infrastructure
+    backend.presentation
+
+[importlinter:contract:infrastructure-no-presentation]
+name = Infrastructure must not import presentation
+type = forbidden
+source_modules =
+    backend.infrastructure
+forbidden_modules =
+    backend.presentation
+
+[importlinter:contract:presentation-no-infrastructure-direct]
+name = Presentation must call application use cases, not infrastructure adapters
+type = forbidden
+source_modules =
+    backend.presentation
+forbidden_modules =
+    backend.infrastructure.repositories
+    backend.infrastructure.adapters
+    backend.infrastructure.services

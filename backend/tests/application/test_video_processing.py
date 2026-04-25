@@ -14,12 +14,10 @@ class TestUploadVideoUseCase:
         mock_storage_adapter = MagicMock()
         mock_storage_adapter.save.return_value = "path/to/uploaded_video.mp4"
 
-        with patch('backend.infrastructure.queue.get_video_queue') as mock_queue:
-            mock_video_queue = MagicMock()
-            mock_queue.return_value = mock_video_queue
-
-            mock_hashtag_repo = MagicMock()
-            use_case = UploadVideoUseCase(video_repo, mock_storage_adapter, mock_hashtag_repo)
+        mock_hashtag_repo = MagicMock()
+        mock_video_queue = MagicMock()
+        if True:
+            use_case = UploadVideoUseCase(video_repo, mock_storage_adapter, mock_hashtag_repo, mock_video_queue)
 
             video_dto = VideoCreateDTO(
                 title="Test Video",

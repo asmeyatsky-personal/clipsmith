@@ -96,7 +96,7 @@ def register(
         dto.username = validate_username(dto.username)
         dto.email = validate_email(dto.email)
         dto.password = validate_password(dto.password)
-        use_case = RegisterUserUseCase(repo)
+        use_case = RegisterUserUseCase(repo, PasswordHelper())
         return use_case.execute(dto)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -110,7 +110,7 @@ def login(
     dto: LoginRequestDTO,
     repo: UserRepositoryPort = Depends(get_user_repo),
 ):
-    use_case = AuthenticateUserUseCase(repo)
+    use_case = AuthenticateUserUseCase(repo, PasswordHelper(), JWTAdapter())
     result = use_case.execute(dto)
     if not result:
         raise HTTPException(

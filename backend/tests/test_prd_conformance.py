@@ -885,7 +885,7 @@ class TestVideoProcessing:
 
     def test_4k_resolution_supported(self):
         """PRD requires 4K video support."""
-        from backend.application.tasks import VIDEO_RESOLUTIONS
+        from backend.infrastructure.queue.tasks import VIDEO_RESOLUTIONS
         assert "2160p" in VIDEO_RESOLUTIONS
         assert VIDEO_RESOLUTIONS["2160p"]["width"] == 3840
         assert VIDEO_RESOLUTIONS["2160p"]["height"] == 2160

@@ -49,7 +49,7 @@ def _create_queues():
     environment = os.getenv("ENVIRONMENT", "development")
 
     try:
-        from .redis_config import get_redis_client
+        from ..redis_config import get_redis_client
         import redis as redis_lib
         from rq import Queue
 

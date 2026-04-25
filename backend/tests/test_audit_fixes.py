@@ -85,7 +85,7 @@ class TestFrameRateParserFix:
 
     def test_safe_parse_fraction(self):
         """Parse standard ffprobe fraction format."""
-        from backend.application.tasks import _safe_parse_frame_rate
+        from backend.infrastructure.queue.tasks import _safe_parse_frame_rate
 
         assert _safe_parse_frame_rate("30/1") == 30.0
         assert _safe_parse_frame_rate("30000/1001") == pytest.approx(29.97, rel=0.01)
@@ -93,28 +93,28 @@ class TestFrameRateParserFix:
 
     def test_safe_parse_decimal(self):
         """Parse decimal frame rate."""
-        from backend.application.tasks import _safe_parse_frame_rate
+        from backend.infrastructure.queue.tasks import _safe_parse_frame_rate
 
         assert _safe_parse_frame_rate("29.97") == pytest.approx(29.97)
         assert _safe_parse_frame_rate("60.0") == 60.0
 
     def test_safe_parse_zero_denominator(self):
         """Zero denominator returns 0.0 instead of crashing."""
-        from backend.application.tasks import _safe_parse_frame_rate
+        from backend.infrastructure.queue.tasks import _safe_parse_frame_rate
 
         assert _safe_parse_frame_rate("0/0") == 0.0
         assert _safe_parse_frame_rate("30/0") == 0.0
 
     def test_safe_parse_invalid_input(self):
         """Invalid input returns 0.0 instead of crashing."""
-        from backend.application.tasks import _safe_parse_frame_rate
+        from backend.infrastructure.queue.tasks import _safe_parse_frame_rate
 
         assert _safe_parse_frame_rate("invalid") == 0.0
         assert _safe_parse_frame_rate("") == 0.0
 
     def test_safe_parse_rejects_code_injection(self):
         """Malicious input cannot execute code."""
-        from backend.application.tasks import _safe_parse_frame_rate
+        from backend.infrastructure.queue.tasks import _safe_parse_frame_rate
 
         # These would execute code with eval() but should safely return 0.0
         assert _safe_parse_frame_rate("__import__('os').system('echo pwned')") == 0.0

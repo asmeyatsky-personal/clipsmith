@@ -7,12 +7,12 @@ import json
 import logging
 from typing import Dict, List, Optional, Tuple
 
-from ..infrastructure.repositories.database import get_task_session
-from ..infrastructure.repositories.sqlite_video_repo import SQLiteVideoRepository
-from ..infrastructure.repositories.sqlite_caption_repo import SQLiteCaptionRepository
-from ..infrastructure.adapters.storage_factory import get_storage_adapter
-from ..application.use_cases.generate_captions import GenerateCaptionsUseCase
-from ..domain.entities.video import VideoStatus, Video
+from ..repositories.database import get_task_session
+from ..repositories.sqlite_video_repo import SQLiteVideoRepository
+from ..repositories.sqlite_caption_repo import SQLiteCaptionRepository
+from ..adapters.storage_factory import get_storage_adapter
+from ...application.use_cases.generate_captions import GenerateCaptionsUseCase
+from ...domain.entities.video import VideoStatus, Video
 
 
 def _safe_parse_frame_rate(rate_str: str) -> float:

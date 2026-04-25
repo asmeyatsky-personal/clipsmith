@@ -14,7 +14,7 @@ from typing import Annotated, List
 from fastapi.security import OAuth2PasswordBearer
 
 from ...infrastructure.queue import get_video_queue
-from ...application.tasks import generate_captions_task
+from ...infrastructure.queue.tasks import generate_captions_task
 
 from ...domain.ports.repository_ports import (
     VideoRepositoryPort,
