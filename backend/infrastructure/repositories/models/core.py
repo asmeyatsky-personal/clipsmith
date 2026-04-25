@@ -84,6 +84,16 @@ class UserBlockDB(SQLModel, table=True):
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
+class DeviceTokenDB(SQLModel, table=True):
+    """Push notification device tokens (APNs/FCM)."""
+    __tablename__ = "device_token"
+    token: str = Field(primary_key=True, max_length=512)
+    user_id: str = Field(index=True)
+    platform: str = Field(index=True)  # "ios" | "android" | "web"
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    last_seen_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+
 class PasswordResetDB(SQLModel, table=True):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()), primary_key=True)
     user_id: str = Field(index=True)

@@ -20,6 +20,7 @@ from .presentation.api.engagement_router import router as engagement_router
 from .presentation.api.discovery_router import router as discovery_router
 from .presentation.api.course_router import router as course_router
 from .presentation.api.compliance_router import router as compliance_router
+from .presentation.api.push_router import router as push_router
 from .presentation.api.two_factor_router import router as two_factor_router
 from .presentation.middleware.monitoring_middleware import (
     MonitoringMiddleware,
@@ -134,6 +135,7 @@ app.include_router(discovery_router)
 app.include_router(course_router)
 app.include_router(compliance_router)
 app.include_router(two_factor_router)
+app.include_router(push_router)
 
 
 @app.get("/")

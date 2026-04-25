@@ -45,7 +45,9 @@ from ..domain.ports.audit_log_port import AuditLogPort
 from ..domain.ports.payment_repository_port import PaymentRepositoryPort
 from ..domain.ports.security_port import JWTPort, PasswordHelperPort
 from ..domain.ports.storage_port import StoragePort
+from ..domain.ports.push_port import DeviceTokenRepositoryPort, PushSenderPort
 from ..domain.ports.user_block_port import UserBlockRepositoryPort
+from ..infrastructure.adapters.apns_push_adapter import get_push_sender
 from ..infrastructure.adapters.audit_log import SQLModelAuditLog
 from ..infrastructure.adapters.email_adapter import get_email_adapter
 from ..infrastructure.adapters.storage_factory import get_storage_adapter
@@ -92,6 +94,9 @@ from ..infrastructure.repositories.sqlite_notification_repo import (
     SQLiteNotificationRepository,
 )
 from ..infrastructure.repositories.sqlite_payment_repo import SQLitePaymentRepository
+from ..infrastructure.repositories.sqlite_device_token_repo import (
+    SQLiteDeviceTokenRepository,
+)
 from ..infrastructure.repositories.sqlite_user_block_repo import (
     SQLiteUserBlockRepository,
 )
@@ -181,6 +186,16 @@ def get_unblock_user_use_case(
     audit: AuditLogPort = Depends(get_audit_log),
 ) -> UnblockUserUseCase:
     return UnblockUserUseCase(repo, audit)
+
+
+def get_device_token_repo(
+    session: Session = Depends(get_session),
+) -> DeviceTokenRepositoryPort:
+    return SQLiteDeviceTokenRepository(session)
+
+
+def get_push_sender_dep() -> PushSenderPort:
+    return get_push_sender()
 
 
 # --- Legacy router providers (transitional) ---
