@@ -26,6 +26,7 @@ class Video(Entity):
     views: int = 0
     likes: int = 0
     duration: float = 0.0
+    is_premium: bool = False
 
 
 @dataclass(frozen=True, kw_only=True)

@@ -30,6 +30,7 @@ class VideoDB(SQLModel, table=True):
     url: Optional[str] = None
     thumbnail_url: Optional[str] = None
     status: str = Field(default="PENDING")
+    is_premium: bool = Field(default=False, index=True)
     views: int = Field(default=0)
     likes: int = Field(default=0)
     duration: float = Field(default=0.0)

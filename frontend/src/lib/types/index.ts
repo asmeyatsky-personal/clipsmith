@@ -16,6 +16,8 @@ export interface VideoResponseDTO {
     likes: number;
     comments?: number;
     duration: number;
+    is_premium?: boolean;
+    is_locked?: boolean;
     created_at?: string | null;
 }
 

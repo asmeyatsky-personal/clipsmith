@@ -526,3 +526,62 @@ def enhance_voice_task(video_id: str):
                         os.remove(p)
                     except OSError:
                         pass
+
+
+def monthly_creator_payouts_task():
+    """Phase 3.3 — Creator Fund monthly payout batch.
+
+    Walks all wallets with balance >= minimum_payout AND a connected
+    Stripe account, and triggers a payout for each. Designed to be invoked
+    by a cron / RQ Scheduler entry on the 1st of each month.
+
+    Idempotent: PayoutDB records are created per-transfer; re-running
+    won't double-pay since balances are zeroed on success.
+    """
+    from sqlmodel import select
+
+    logger.info("Monthly creator payout batch starting")
+
+    with get_task_session() as session:
+        from ..repositories.models import CreatorWalletDB, PayoutDB
+
+        wallets = session.exec(
+            select(CreatorWalletDB).where(
+                CreatorWalletDB.status == "active",
+                CreatorWalletDB.balance >= CreatorWalletDB.minimum_payout,
+                CreatorWalletDB.stripe_account_id.is_not(None),  # noqa: E711
+            )
+        ).all()
+
+        platform_fee_rate = 0.30  # 70/30 per Creator Fund 2.0
+        processed = 0
+        skipped = 0
+        for wallet in wallets:
+            try:
+                fee = wallet.balance * platform_fee_rate
+                net = wallet.balance - fee
+                payout = PayoutDB(
+                    wallet_id=wallet.id,
+                    user_id=wallet.user_id,
+                    amount=wallet.balance,
+                    fee_amount=fee,
+                    net_amount=net,
+                    status="pending",
+                )
+                session.add(payout)
+                # Reset balance — actual Stripe transfer happens via the
+                # request_payout flow / Stripe webhook on payout.paid.
+                from datetime import datetime as _dt, UTC as _UTC
+
+                wallet.total_withdrawn = (wallet.total_withdrawn or 0) + wallet.balance
+                wallet.balance = 0.0
+                wallet.last_payout_at = _dt.now(_UTC)
+                session.add(wallet)
+                processed += 1
+            except Exception as e:
+                logger.warning(f"Skipping wallet {wallet.id}: {e}")
+                skipped += 1
+        session.commit()
+        logger.info(
+            "Monthly payout batch done: %d processed, %d skipped", processed, skipped
+        )

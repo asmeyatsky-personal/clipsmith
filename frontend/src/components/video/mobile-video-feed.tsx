@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { Heart, MessageCircle, Share2, Flag, Volume2, VolumeX, Pause, Plus, Settings as SettingsIcon, User as UserIcon, DollarSign } from 'lucide-react';
+import { Heart, MessageCircle, Share2, Flag, Volume2, VolumeX, Pause, Plus, Settings as SettingsIcon, User as UserIcon, DollarSign, Lock, Crown } from 'lucide-react';
 import { NotificationBell } from '@/components/notifications/notification-bell';
 import { apiClient, getBaseUrl } from '@/lib/api/client';
 import { interactionService } from '@/lib/api/interactions';
@@ -381,21 +381,68 @@ function FeedItem({
             className="relative h-screen w-full snap-start snap-always"
             style={{ scrollSnapAlign: 'start' }}
         >
-            {/* Video */}
-            <video
-                ref={(el) => {
-                    videoRef.current = el;
-                    registerVideo(el);
-                }}
-                src={video.url ?? undefined}
-                poster={video.thumbnail_url ?? undefined}
-                className="absolute inset-0 w-full h-full object-cover"
-                playsInline
-                loop
-                muted={muted}
-                preload="metadata"
-                onClick={togglePlay}
-            />
+            {/* Video (or premium-locked overlay) */}
+            {video.is_locked ? (
+                <div className="absolute inset-0 bg-zinc-900">
+                    {video.thumbnail_url && (
+                        <img
+                            src={video.thumbnail_url}
+                            alt=""
+                            className="absolute inset-0 w-full h-full object-cover blur-2xl scale-110 opacity-40"
+                        />
+                    )}
+                    <div className="absolute inset-0 flex flex-col items-center justify-center text-center text-white p-6 z-10">
+                        <Crown className="w-14 h-14 text-amber-400 mb-3" />
+                        <div className="text-xl font-bold mb-1">Premium content</div>
+                        <p className="text-sm text-white/70 mb-4 max-w-xs">
+                            Subscribe to @{video.creator_username ?? video.creator_id} to unlock
+                        </p>
+                        <button
+                            onClick={async (e) => {
+                                e.stopPropagation();
+                                const raw = window.prompt('Monthly amount in USD?', '4.99');
+                                if (!raw) return;
+                                const amount = parseFloat(raw);
+                                if (!Number.isFinite(amount) || amount <= 0) return;
+                                try {
+                                    const fd = new FormData();
+                                    fd.append('creator_id', video.creator_id);
+                                    fd.append('amount', String(amount));
+                                    fd.append('interval', 'month');
+                                    const res = await fetch(`${getBaseUrl()}/api/payments/subscriptions`, {
+                                        method: 'POST',
+                                        credentials: 'include',
+                                        body: fd,
+                                    });
+                                    if (!res.ok) throw new Error(await res.text());
+                                    alert('Subscription started. Refresh in a moment.');
+                                } catch (e) {
+                                    alert(e instanceof Error ? e.message : 'Subscribe failed');
+                                }
+                            }}
+                            className="px-6 py-3 rounded-full bg-amber-500 text-white font-semibold flex items-center gap-2"
+                        >
+                            <Lock className="w-4 h-4" />
+                            Subscribe
+                        </button>
+                    </div>
+                </div>
+            ) : (
+                <video
+                    ref={(el) => {
+                        videoRef.current = el;
+                        registerVideo(el);
+                    }}
+                    src={video.url ?? undefined}
+                    poster={video.thumbnail_url ?? undefined}
+                    className="absolute inset-0 w-full h-full object-cover"
+                    playsInline
+                    loop
+                    muted={muted}
+                    preload="metadata"
+                    onClick={togglePlay}
+                />
+            )}
 
             {/* Pause indicator */}
             {paused && (

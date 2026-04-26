@@ -230,6 +230,38 @@ async def get_user_subscriptions(
     return {"success": True, "subscriptions": subscriptions}
 
 
+# --- Phase 3.1: subscription status (am I subscribed to creator X?) ---
+
+
+@router.get("/subscriptions/status/{creator_id}")
+async def get_subscription_status(
+    creator_id: str,
+    current_user: dict = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    """Returns whether the current user has an active subscription to
+    the given creator. Used by feed + premium-content middleware.
+    """
+    SubscriptionDB = db_models.SubscriptionDB
+    from sqlmodel import select as _select
+
+    sub = session.exec(
+        _select(SubscriptionDB).where(
+            SubscriptionDB.user_id == current_user.id,
+            SubscriptionDB.creator_id == creator_id,
+            SubscriptionDB.status.in_(["active", "trialing"]),
+        )
+    ).first()
+    if not sub:
+        return {"subscribed": False}
+    return {
+        "subscribed": True,
+        "tier": sub.amount,
+        "interval": sub.interval,
+        "current_period_end": sub.current_period_end.isoformat() if sub.current_period_end else None,
+    }
+
+
 @router.get("/creator/{creator_id}/subscribers")
 async def get_creator_subscribers(
     creator_id: str,
@@ -999,3 +1031,135 @@ async def respond_to_campaign(
     session.commit()
 
     return {"success": True, "status": campaign.status}
+
+
+# --- Phase 3.4: brand collaboration marketplace (scaffold) ----------------
+
+
+@router.post("/brand/profile")
+async def create_or_update_brand_profile(
+    body: dict,
+    current_user: dict = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    """Brands set up a profile so creators can find them."""
+    BrandProfileDB = db_models.BrandProfileDB
+    from sqlmodel import select as _select
+
+    existing = session.exec(
+        _select(BrandProfileDB).where(BrandProfileDB.user_id == current_user.id)
+    ).first()
+    if existing:
+        for k in ("company_name", "industry", "website", "description", "logo_url"):
+            if k in body:
+                setattr(existing, k, body[k])
+        existing.updated_at = datetime.now(UTC)
+        session.add(existing)
+    else:
+        existing = BrandProfileDB(
+            user_id=current_user.id,
+            company_name=body.get("company_name", ""),
+            industry=body.get("industry", ""),
+            website=body.get("website"),
+            description=body.get("description"),
+            logo_url=body.get("logo_url"),
+        )
+        session.add(existing)
+    session.commit()
+    session.refresh(existing)
+    return {"id": existing.id, "company_name": existing.company_name}
+
+
+@router.post("/brand/campaigns")
+async def create_brand_campaign(
+    body: dict,
+    current_user: dict = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    """Brand creates a campaign offer to a specific creator."""
+    BrandCampaignDB = db_models.BrandCampaignDB
+    creator_id = body.get("creator_id")
+    if not creator_id:
+        raise HTTPException(status_code=400, detail="creator_id required")
+    if current_user.id == creator_id:
+        raise HTTPException(status_code=400, detail="Cannot offer to yourself")
+
+    campaign = BrandCampaignDB(
+        brand_id=current_user.id,
+        creator_id=creator_id,
+        title=body.get("title", "Untitled campaign"),
+        description=body.get("description"),
+        budget=float(body.get("budget", 0)),
+        requirements=body.get("requirements"),
+        deliverables=body.get("deliverables"),
+    )
+    session.add(campaign)
+    session.commit()
+    session.refresh(campaign)
+    return {
+        "id": campaign.id,
+        "status": campaign.status,
+        "budget": campaign.budget,
+    }
+
+
+@router.get("/brand/campaigns")
+async def list_my_campaigns(
+    role: str = "creator",
+    current_user: dict = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    """role=creator: campaigns offered to me. role=brand: campaigns I've offered."""
+    BrandCampaignDB = db_models.BrandCampaignDB
+    from sqlmodel import select as _select
+
+    if role == "brand":
+        stmt = _select(BrandCampaignDB).where(BrandCampaignDB.brand_id == current_user.id)
+    else:
+        stmt = _select(BrandCampaignDB).where(BrandCampaignDB.creator_id == current_user.id)
+    rows = session.exec(stmt).all()
+    return {
+        "items": [
+            {
+                "id": r.id,
+                "title": r.title,
+                "description": r.description,
+                "budget": r.budget,
+                "status": r.status,
+                "payment_status": r.payment_status,
+                "brand_id": r.brand_id,
+                "creator_id": r.creator_id,
+                "deadline": r.deadline.isoformat() if r.deadline else None,
+            }
+            for r in rows
+        ]
+    }
+
+
+@router.post("/brand/campaigns/{campaign_id}/respond")
+async def respond_to_campaign(
+    campaign_id: str,
+    body: dict,
+    current_user: dict = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    """Creator accepts or rejects a campaign offer."""
+    BrandCampaignDB = db_models.BrandCampaignDB
+
+    decision = body.get("decision")
+    if decision not in ("accept", "reject"):
+        raise HTTPException(status_code=400, detail="decision must be 'accept' or 'reject'")
+
+    campaign = session.get(BrandCampaignDB, campaign_id)
+    if not campaign:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+    if campaign.creator_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not your campaign")
+    if campaign.status not in ("pending", "negotiating"):
+        raise HTTPException(status_code=400, detail=f"Cannot respond, status={campaign.status}")
+
+    campaign.status = "accepted" if decision == "accept" else "rejected"
+    campaign.updated_at = datetime.now(UTC)
+    session.add(campaign)
+    session.commit()
+    return {"id": campaign.id, "status": campaign.status}
