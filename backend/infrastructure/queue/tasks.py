@@ -587,6 +587,60 @@ def monthly_creator_payouts_task():
         )
 
 
+def apply_chromakey_task(
+    video_id: str,
+    color: str = "0x00FF00",
+    similarity: float = 0.3,
+    blend: float = 0.1,
+):
+    """Phase 5.3 — server-side green-screen via FFmpeg `colorkey` filter.
+
+    Removes the keyed colour and saves the result back over the video URL.
+    `color` is hex, `similarity` controls match width, `blend` softens edges.
+    """
+    logger.info(f"Chroma-key on {video_id} color={color}")
+    src: Optional[pathlib.Path] = None
+    dst: Optional[pathlib.Path] = None
+
+    with get_task_session() as session:
+        video_repo = SQLiteVideoRepository(session)
+        video = video_repo.get_by_id(video_id)
+        if not video or not video.url:
+            logger.warning(f"Video {video_id} not ready for chroma-key")
+            return
+
+        backend_url = os.getenv("BACKEND_URL", "http://localhost:8000")
+        src = UPLOAD_DIR / f"{uuid4()}_chroma_in.mp4"
+        dst = UPLOAD_DIR / f"{uuid4()}_chroma_out.mp4"
+        try:
+            r = requests.get(f"{backend_url}{video.url}", stream=True, timeout=30)
+            r.raise_for_status()
+            with open(src, "wb") as f:
+                for chunk in r.iter_content(chunk_size=8192):
+                    f.write(chunk)
+
+            (
+                ffmpeg.input(str(src))
+                .filter("colorkey", color, similarity, blend)
+                .output(str(dst), vcodec="libx264", acodec="copy", preset="fast")
+                .overwrite_output()
+                .run(capture_stdout=True, capture_stderr=True)
+            )
+
+            with open(dst, "rb") as fp:
+                storage_adapter.save(pathlib.Path(video.url).name, fp)
+            logger.info(f"Chroma-key done for {video_id}")
+        except Exception as e:
+            logger.exception(f"Chroma-key failed {video_id}: {e}")
+        finally:
+            for p in (src, dst):
+                if p and p.exists():
+                    try:
+                        os.remove(p)
+                    except OSError:
+                        pass
+
+
 def compose_duet_task(duet_id: str):
     """Phase 4.1 — Server-side FFmpeg duet composition.
 

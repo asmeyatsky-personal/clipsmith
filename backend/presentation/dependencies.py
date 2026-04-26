@@ -77,6 +77,7 @@ from ..infrastructure.repositories.sqlite_video_editor_repo import (
 )
 from ..infrastructure.queue import get_video_queue as _raw_get_video_queue
 from ..infrastructure.queue.tasks import (
+    apply_chromakey_task as _raw_apply_chromakey_task,
     compose_duet_task as _raw_compose_duet_task,
     detect_scenes_task as _raw_detect_scenes_task,
     enhance_voice_task as _raw_enhance_voice_task,
@@ -274,6 +275,7 @@ process_video_task = _raw_process_video_task
 detect_scenes_task = _raw_detect_scenes_task
 enhance_voice_task = _raw_enhance_voice_task
 compose_duet_task = _raw_compose_duet_task
+apply_chromakey_task = _raw_apply_chromakey_task
 
 
 _live_stream_adapter: LiveStreamPort = PlaceholderLiveStreamAdapter()

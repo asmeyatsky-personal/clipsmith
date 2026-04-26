@@ -1,12 +1,15 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from typing import Optional
 from sqlmodel import Session, select
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
+from collections import defaultdict
+import math
 import uuid
 from ..dependencies import db_models  # legacy ORM access
 from ..dependencies import get_session_for_router as get_session
 from ..dependencies import get_current_user
 
+VideoDB = db_models.VideoDB
 FavoriteCreatorDB = db_models.FavoriteCreatorDB
 PlaylistCollaboratorDB = db_models.PlaylistCollaboratorDB
 PlaylistDB = db_models.PlaylistDB
@@ -446,20 +449,65 @@ def calculate_discovery_score(
         )
     ).first()
 
-    # Default weights if no preferences exist
     interest_weight = prefs.interest_weight if prefs else 0.5
     community_weight = prefs.community_weight if prefs else 0.2
     virality_weight = prefs.virality_weight if prefs else 0.2
     freshness_weight = prefs.freshness_weight if prefs else 0.1
 
-    # Calculate a placeholder score based on weights
-    score = (interest_weight * 0.8 + community_weight * 0.6 +
-             virality_weight * 0.7 + freshness_weight * 0.9)
+    video = session.get(VideoDB, video_id)
+    if video is None:
+        # Soft-miss: return a zeroed scorecard so callers can still render.
+        return {
+            "success": True,
+            "video_id": video_id,
+            "discovery_score": 0.0,
+            "feature_contributions": {"interest": 0, "community": 0, "virality": 0, "freshness": 0},
+            "weights_applied": {
+                "interest": interest_weight,
+                "community": community_weight,
+                "virality": virality_weight,
+                "freshness": freshness_weight,
+            },
+        }
+
+    # Per-feature signals, each normalised to [0, 1].
+    views = max(int(video.views or 0), 0)
+    likes = max(int(video.likes or 0), 0)
+    virality = math.log1p(views) / math.log1p(1_000_000)
+    interest = min(likes / 1000.0, 1.0)
+    community = 1.0 if session.exec(
+        select(FavoriteCreatorDB).where(
+            FavoriteCreatorDB.user_id == current_user.id,
+            FavoriteCreatorDB.creator_id == video.creator_id,
+        )
+    ).first() else 0.0
+    created = video.created_at
+    if created and created.tzinfo is None:
+        created = created.replace(tzinfo=timezone.utc)
+    age_hours = (
+        (datetime.now(timezone.utc) - created).total_seconds() / 3600.0
+        if created else 0.0
+    )
+    # Half-life ~72h: a 3-day-old video scores ~0.5 on freshness.
+    freshness = math.exp(-age_hours / 72.0)
+
+    score = (
+        interest_weight * interest
+        + community_weight * community
+        + virality_weight * virality
+        + freshness_weight * freshness
+    )
 
     return {
         "success": True,
         "video_id": video_id,
-        "discovery_score": round(score, 4),
+        "discovery_score": round(min(max(score, 0.0), 1.0), 4),
+        "feature_contributions": {
+            "interest": round(interest, 4),
+            "community": round(community, 4),
+            "virality": round(virality, 4),
+            "freshness": round(freshness, 4),
+        },
         "weights_applied": {
             "interest": interest_weight,
             "community": community_weight,
@@ -513,17 +561,56 @@ def get_posting_recommendations(
     current_user=Depends(get_current_user),
     session: Session = Depends(get_session),
 ):
-    """Get posting time and content recommendations for the creator."""
+    """Best-posting-time recommendations from the creator's own video history.
+
+    Aggregates the creator's videos by (weekday, hour-bucket) and ranks
+    each cell by mean (views + 5*likes), a quick engagement proxy. Cells
+    needing >=2 samples to count; falls back to global heuristics when
+    history is sparse.
+    """
+    videos = session.exec(
+        select(VideoDB).where(VideoDB.creator_id == current_user.id)
+    ).all()
+
+    buckets: dict[tuple[int, int], list[float]] = defaultdict(list)
+    for v in videos:
+        if not v.created_at:
+            continue
+        ts = v.created_at if v.created_at.tzinfo else v.created_at.replace(tzinfo=timezone.utc)
+        score = float(v.views or 0) + 5.0 * float(v.likes or 0)
+        buckets[(ts.weekday(), ts.hour)].append(score)
+
+    weekdays = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+    ranked = sorted(
+        (
+            (weekdays[wd], hr, sum(scores) / len(scores))
+            for (wd, hr), scores in buckets.items()
+            if len(scores) >= 2
+        ),
+        key=lambda t: t[2],
+        reverse=True,
+    )
+
+    if ranked:
+        best = [{"day": d, "hour": h, "score": round(s, 2), "timezone": "UTC"} for d, h, s in ranked[:5]]
+    else:
+        best = [
+            {"day": "Wednesday", "hour": 12, "timezone": "UTC", "score": None},
+            {"day": "Friday", "hour": 17, "timezone": "UTC", "score": None},
+            {"day": "Sunday", "hour": 19, "timezone": "UTC", "score": None},
+        ]
+
+    audience_hours = sorted(
+        {h for (_, h), scores in buckets.items() if len(scores) >= 2}
+    )
+
     return {
         "success": True,
         "recommendations": {
-            "best_posting_times": [
-                {"day": "Monday", "hour": 18, "timezone": "UTC"},
-                {"day": "Wednesday", "hour": 12, "timezone": "UTC"},
-                {"day": "Friday", "hour": 17, "timezone": "UTC"},
-            ],
+            "best_posting_times": best,
             "trending_topics": [],
-            "audience_active_hours": [],
+            "audience_active_hours": audience_hours,
             "suggested_hashtags": [],
+            "samples_analysed": sum(len(s) for s in buckets.values()),
         },
     }

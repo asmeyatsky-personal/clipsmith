@@ -627,3 +627,28 @@ def trigger_voice_enhancement(
     queue = get_video_queue()
     queue.enqueue(enhance_voice_task, video_id, job_timeout=900)
     return {"queued": True, "task": "voice_enhancement"}
+
+
+@router.post("/{video_id}/chroma-key", status_code=status.HTTP_202_ACCEPTED)
+def trigger_chroma_key(
+    video_id: str,
+    current_user: Annotated[dict, Depends(get_current_user)],
+    body: dict | None = None,
+    repo: VideoRepositoryPort = Depends(get_video_repo),
+):
+    """Phase 5.3 — apply server-side green-screen removal."""
+    video = repo.get_by_id(video_id)
+    if not video:
+        raise HTTPException(status_code=404, detail="Video not found")
+    if video.creator_id != current_user["user_id"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+
+    body = body or {}
+    color = body.get("color", "0x00FF00")
+    similarity = float(body.get("similarity", 0.3))
+    blend = float(body.get("blend", 0.1))
+
+    from ..dependencies import apply_chromakey_task
+    queue = get_video_queue()
+    queue.enqueue(apply_chromakey_task, video_id, color, similarity, blend, job_timeout=600)
+    return {"queued": True, "task": "chroma_key"}
