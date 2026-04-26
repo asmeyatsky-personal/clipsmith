@@ -1,6 +1,7 @@
+import hashlib
 from typing import Annotated, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 
 from ...application.dtos.video_dto import PaginatedVideoResponseDTO, VideoResponseDTO
 from ...application.use_cases.get_personalized_feed import GetPersonalizedFeedUseCase
@@ -100,6 +101,8 @@ def _enrich_videos(
 
 @router.get("/", response_model=PaginatedVideoResponseDTO)
 def get_feed(
+    request: Request,
+    response: Response,
     feed_type: Annotated[
         str, Query(description="Feed type: foryou, following, trending")
     ] = "foryou",
@@ -137,13 +140,30 @@ def get_feed(
         videos = video_repo.find_all(offset=(page - 1) * page_size, limit=page_size)
         total_count = video_repo.count_all()
 
-    return PaginatedVideoResponseDTO(
+    payload = PaginatedVideoResponseDTO(
         items=_enrich_videos(videos, user_repo, interaction_repo),
         total=total_count,
         page=page,
         page_size=page_size,
         total_pages=(total_count + page_size - 1) // page_size,
     )
+
+    # Phase 6.2 — weak ETag over the result set so clients can 304 quickly.
+    # Hash only the (id, views, likes) tuple per item: cheap to compute and
+    # changes the moment any counter advances.
+    sig_src = "|".join(f"{v.id}:{v.views}:{v.likes}" for v in payload.items)
+    etag = 'W/"' + hashlib.sha1(
+        f"{feed_type}:{page}:{page_size}:{sig_src}".encode()
+    ).hexdigest() + '"'
+    if request.headers.get("if-none-match") == etag:
+        response.status_code = status.HTTP_304_NOT_MODIFIED
+        response.headers["ETag"] = etag
+        response.headers["Cache-Control"] = "private, max-age=10"
+        return None  # FastAPI lets us short-circuit when 304
+    response.headers["ETag"] = etag
+    response.headers["Cache-Control"] = "private, max-age=10"
+
+    return payload
 
 
 @router.get("/trending", response_model=PaginatedVideoResponseDTO)

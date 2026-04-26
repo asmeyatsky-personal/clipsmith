@@ -14,6 +14,7 @@ const geistMono = Geist_Mono({
 
 import { AuthProvider } from "@/components/auth-provider";
 import { ChromeShell } from "@/components/layout/chrome-shell";
+import { I18nProvider } from "@/lib/i18n/i18n-provider";
 
 export const metadata: Metadata = {
   title: "clipsmith | Social Video Platform",
@@ -37,9 +38,11 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-zinc-50 dark:bg-zinc-950 text-zinc-950 dark:text-zinc-50`}
       >
-        <AuthProvider>
-          <ChromeShell>{children}</ChromeShell>
-        </AuthProvider>
+        <I18nProvider>
+          <AuthProvider>
+            <ChromeShell>{children}</ChromeShell>
+          </AuthProvider>
+        </I18nProvider>
       </body>
     </html>
   );

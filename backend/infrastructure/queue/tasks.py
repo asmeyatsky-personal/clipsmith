@@ -587,6 +587,51 @@ def monthly_creator_payouts_task():
         )
 
 
+def daily_analytics_export_task():
+    """Phase 6.3 — nightly aggregation push to the warehouse.
+
+    Walks VideoDB + UserDB and produces a flat row-per-video table the
+    warehouse can run cohort joins against. Uses whatever AnalyticsExportPort
+    adapter is currently bound (JSONL by default).
+    """
+    from ..adapters.analytics_export_jsonl import JSONLAnalyticsExporter
+    from ..repositories.models import VideoDB, UserDB
+
+    logger.info("Daily analytics export starting")
+    exporter = JSONLAnalyticsExporter()
+    with get_task_session() as session:
+        from sqlmodel import select as _select
+
+        videos = session.exec(_select(VideoDB)).all()
+        rows = (
+            {
+                "video_id": v.id,
+                "creator_id": v.creator_id,
+                "status": v.status,
+                "views": v.views or 0,
+                "likes": v.likes or 0,
+                "duration": v.duration,
+                "created_at": v.created_at.isoformat() if v.created_at else None,
+                "is_premium": getattr(v, "is_premium", False),
+            }
+            for v in videos
+        )
+        exporter.export("video_metrics_daily", rows)
+
+        users = session.exec(_select(UserDB)).all()
+        urows = (
+            {
+                "user_id": u.id,
+                "is_active": u.is_active,
+                "email_verified": u.email_verified,
+                "created_at": u.created_at.isoformat() if u.created_at else None,
+            }
+            for u in users
+        )
+        exporter.export("user_dim_daily", urows)
+    logger.info("Daily analytics export done")
+
+
 def apply_chromakey_task(
     video_id: str,
     color: str = "0x00FF00",
