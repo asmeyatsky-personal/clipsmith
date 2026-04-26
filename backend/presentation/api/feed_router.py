@@ -152,8 +152,10 @@ def get_feed(
     # Hash only the (id, views, likes) tuple per item: cheap to compute and
     # changes the moment any counter advances.
     sig_src = "|".join(f"{v.id}:{v.views}:{v.likes}" for v in payload.items)
-    etag = 'W/"' + hashlib.sha1(
-        f"{feed_type}:{page}:{page_size}:{sig_src}".encode()
+    # ETag is a cache key, not a security primitive — sha1 with usedforsecurity=False
+    etag = 'W/"' + hashlib.sha1(  # nosec B324 — non-security checksum
+        f"{feed_type}:{page}:{page_size}:{sig_src}".encode(),
+        usedforsecurity=False,
     ).hexdigest() + '"'
     if request.headers.get("if-none-match") == etag:
         response.status_code = status.HTTP_304_NOT_MODIFIED
