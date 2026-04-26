@@ -1,0 +1,13 @@
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Test fixtures only"
+paths = [
+  '''backend/tests/.*''',
+]
+regexes = [
+  '''S3cret-smoke-pw''',
+  '''ci-test-secret-key-not-for-production''',
+  '''smoke-test-secret-not-for-prod''',
+]

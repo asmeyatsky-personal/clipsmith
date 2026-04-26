@@ -24,7 +24,7 @@ jobs:
         gitleaks version
 
     - name: Run gitleaks
-      run: gitleaks detect --source . --no-banner --redact --exit-code 1
+      run: gitleaks detect --source . --no-banner --redact --exit-code 1 --config .gitleaks.toml
 
   architecture-lint:
     runs-on: ubuntu-latest
