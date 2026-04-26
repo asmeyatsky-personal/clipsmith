@@ -561,3 +561,69 @@ def send_tip_to_video_creator(
         return use_case.execute(tip_data, current_user["user_id"])
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+
+# --- Phase 2.8: editor-side AI triggers + chapter list -------------------
+
+
+@router.get("/{video_id}/chapters")
+def list_chapters(video_id: str, session: Session = Depends(get_session)):
+    """Auto-detected scene boundaries (Phase 2.2) + manual chapters."""
+    ChapterMarkerDB = db_models.ChapterMarkerDB
+    from sqlmodel import select as _select
+
+    rows = session.exec(
+        _select(ChapterMarkerDB)
+        .where(ChapterMarkerDB.video_id == video_id)
+        .order_by(ChapterMarkerDB.start_time)
+    ).all()
+    return {
+        "items": [
+            {
+                "id": r.id,
+                "title": r.title,
+                "start_time": r.start_time,
+                "end_time": r.end_time,
+                "auto": r.creator_id == "_auto",
+            }
+            for r in rows
+        ]
+    }
+
+
+@router.post("/{video_id}/scenes/detect", status_code=status.HTTP_202_ACCEPTED)
+def trigger_scene_detection(
+    video_id: str,
+    current_user: Annotated[dict, Depends(get_current_user)],
+    repo: VideoRepositoryPort = Depends(get_video_repo),
+):
+    video = repo.get_by_id(video_id)
+    if not video:
+        raise HTTPException(status_code=404, detail="Video not found")
+    if video.creator_id != current_user["user_id"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+
+    from ..dependencies import detect_scenes_task
+
+    queue = get_video_queue()
+    queue.enqueue(detect_scenes_task, video_id, job_timeout=600)
+    return {"queued": True, "task": "scene_detection"}
+
+
+@router.post("/{video_id}/voice/enhance", status_code=status.HTTP_202_ACCEPTED)
+def trigger_voice_enhancement(
+    video_id: str,
+    current_user: Annotated[dict, Depends(get_current_user)],
+    repo: VideoRepositoryPort = Depends(get_video_repo),
+):
+    video = repo.get_by_id(video_id)
+    if not video:
+        raise HTTPException(status_code=404, detail="Video not found")
+    if video.creator_id != current_user["user_id"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+
+    from ..dependencies import enhance_voice_task
+
+    queue = get_video_queue()
+    queue.enqueue(enhance_voice_task, video_id, job_timeout=900)
+    return {"queued": True, "task": "voice_enhancement"}

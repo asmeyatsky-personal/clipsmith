@@ -77,6 +77,8 @@ from ..infrastructure.repositories.sqlite_video_editor_repo import (
 )
 from ..infrastructure.queue import get_video_queue as _raw_get_video_queue
 from ..infrastructure.queue.tasks import (
+    detect_scenes_task as _raw_detect_scenes_task,
+    enhance_voice_task as _raw_enhance_voice_task,
     generate_captions_task as _raw_generate_captions_task,
     process_video_task as _raw_process_video_task,
 )
@@ -264,6 +266,8 @@ def get_video_processing_queue():
 # Re-exported for routers that still need direct task references.
 generate_captions_task = _raw_generate_captions_task
 process_video_task = _raw_process_video_task
+detect_scenes_task = _raw_detect_scenes_task
+enhance_voice_task = _raw_enhance_voice_task
 
 # Legacy class re-exports for routers with inline `SQLiteXRepo(session)` /
 # `JWTAdapter.verify_token(...)` calls. To be removed as routers move to

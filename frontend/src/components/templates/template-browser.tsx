@@ -29,6 +29,28 @@ export function TemplateBrowser() {
   const [style, setStyle] = useState('all');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
+  const useTemplate = async (template: AITemplate) => {
+    if (template.is_premium && template.price > 0) {
+      alert(`This template is $${template.price}. Premium purchase coming soon.`);
+      return;
+    }
+    try {
+      const { apiClient } = await import('@/lib/api/client');
+      const r = await apiClient<{ success: boolean; project_id: string }>(
+        `/api/ai/templates/${template.id}/use`,
+        {
+          method: 'POST',
+          body: JSON.stringify({ title: `${template.name} project` }),
+        },
+      );
+      if (r.success && r.project_id) {
+        window.location.href = `/editor/edit?p=${r.project_id}`;
+      }
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'Could not apply template');
+    }
+  };
+
   const loadTemplates = useCallback(async () => {
     setIsLoading(true);
     try {
@@ -123,6 +145,7 @@ export function TemplateBrowser() {
           {filteredTemplates.map((template) => (
             <div
               key={template.id}
+              onClick={() => useTemplate(template)}
               className={`border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden hover:border-blue-500 hover:shadow-lg transition-all cursor-pointer ${
                 viewMode === 'list' ? 'flex' : ''
               }`}

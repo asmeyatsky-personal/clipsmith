@@ -7,6 +7,7 @@ import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { Capacitor } from '@capacitor/core';
 import { useAuthStore } from '@/lib/auth/auth-store';
 import { getBaseUrl } from '@/lib/api/client';
+import { LiveRecorder } from '@/components/video/live-recorder';
 
 const MAX_DURATION_SECONDS = 60;
 const MAX_FILE_BYTES = 500 * 1024 * 1024;
@@ -27,6 +28,7 @@ export default function RecordPage() {
     const [uploading, setUploading] = useState(false);
     const [progress, setProgress] = useState(0);
     const [error, setError] = useState<string | null>(null);
+    const [liveMode, setLiveMode] = useState(false);
 
     useEffect(() => {
         return () => {
@@ -168,26 +170,59 @@ export default function RecordPage() {
             {/* Body */}
             <div className="flex-1 flex flex-col px-4 py-3 gap-4 pb-[max(env(safe-area-inset-bottom),16px)]">
                 {!file ? (
-                    <div className="flex-1 flex flex-col items-center justify-center gap-6">
-                        <Camera className="w-20 h-20 text-white/40" />
-                        <p className="text-white/70 text-center max-w-xs">
-                            Record a clip up to {MAX_DURATION_SECONDS}s, or pick one from your library.
-                        </p>
-                        <button
-                            onClick={() => fileInputRef.current?.click()}
-                            className="px-8 py-3 bg-white text-black rounded-full font-semibold flex items-center gap-2"
-                        >
-                            <Camera className="w-5 h-5" />
-                            Record / pick video
-                        </button>
-                        <input
-                            ref={fileInputRef}
-                            type="file"
-                            accept="video/*"
-                            capture="user"
-                            className="hidden"
-                            onChange={onPickFile}
-                        />
+                    <div className="flex-1 flex flex-col items-center gap-4">
+                        {!liveMode ? (
+                            <>
+                                <Camera className="w-20 h-20 text-white/40 mt-8" />
+                                <p className="text-white/70 text-center max-w-xs">
+                                    Record up to {MAX_DURATION_SECONDS}s, or pick from your library.
+                                </p>
+                                <div className="flex flex-col gap-3 w-full max-w-xs">
+                                    <button
+                                        onClick={() => setLiveMode(true)}
+                                        className="px-6 py-3 bg-red-500 text-white rounded-full font-semibold flex items-center justify-center gap-2"
+                                    >
+                                        <Camera className="w-5 h-5" />
+                                        Record live (with BG removal)
+                                    </button>
+                                    <button
+                                        onClick={() => fileInputRef.current?.click()}
+                                        className="px-6 py-3 bg-white text-black rounded-full font-semibold flex items-center justify-center gap-2"
+                                    >
+                                        Pick from library
+                                    </button>
+                                </div>
+                                <input
+                                    ref={fileInputRef}
+                                    type="file"
+                                    accept="video/*"
+                                    capture="user"
+                                    className="hidden"
+                                    onChange={onPickFile}
+                                />
+                            </>
+                        ) : (
+                            <div className="w-full max-w-md">
+                                <LiveRecorder
+                                    maxSeconds={MAX_DURATION_SECONDS}
+                                    onComplete={(recordedFile, durationSeconds) => {
+                                        if (previewUrl) URL.revokeObjectURL(previewUrl);
+                                        const url = URL.createObjectURL(recordedFile);
+                                        setFile(recordedFile);
+                                        setPreviewUrl(url);
+                                        setDuration(durationSeconds);
+                                        setTrimEnd(durationSeconds);
+                                        setLiveMode(false);
+                                    }}
+                                />
+                                <button
+                                    onClick={() => setLiveMode(false)}
+                                    className="mt-3 mx-auto block text-zinc-400 underline text-sm"
+                                >
+                                    Cancel
+                                </button>
+                            </div>
+                        )}
                         {error && <p className="text-red-400 text-sm">{error}</p>}
                     </div>
                 ) : (

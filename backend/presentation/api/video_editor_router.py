@@ -67,7 +67,7 @@ async def create_project(
 ):
     """Create a new video project."""
     project = service.create_project(
-        user_id=current_user["id"], title=title, description=description
+        user_id=current_user.id, title=title, description=description
     )
     return {"success": True, "project": project}
 
@@ -84,7 +84,7 @@ async def get_user_projects(
 
     project_status = VideoProjectStatus(status) if status else None
     projects = service.get_user_projects(
-        user_id=current_user["id"], limit=limit, status=project_status
+        user_id=current_user.id, limit=limit, status=project_status
     )
     return {"success": True, "projects": projects}
 
@@ -100,7 +100,7 @@ async def get_project(
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
 
-    if project.user_id != current_user["id"]:
+    if project.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Access denied")
 
     return {"success": True, "project": project}
@@ -118,7 +118,7 @@ async def update_project_title(
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
 
-    if project.user_id != current_user["id"]:
+    if project.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Access denied")
 
     updated_project = service.update_project_title(project_id, title)
@@ -136,7 +136,7 @@ async def delete_project(
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
 
-    if project.user_id != current_user["id"]:
+    if project.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Access denied")
 
     success = service.delete_project(project_id)
@@ -157,7 +157,7 @@ async def upload_asset(
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
 
-    if project.user_id != current_user["id"]:
+    if project.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Access denied")
 
     # Here you would typically upload the file to cloud storage
@@ -203,7 +203,7 @@ async def get_project_assets(
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
 
-    if project.user_id != current_user["id"]:
+    if project.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Access denied")
 
     assets = service.get_project_assets(project_id, asset_type)
@@ -222,7 +222,7 @@ async def delete_asset(
         raise HTTPException(status_code=404, detail="Asset not found")
 
     project = service.get_project(asset.project_id)
-    if not project or project.user_id != current_user["id"]:
+    if not project or project.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Access denied")
 
     success = service.delete_asset(asset_id)
@@ -246,7 +246,7 @@ async def add_transition(
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
 
-    if project.user_id != current_user["id"]:
+    if project.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Access denied")
 
     transition_params = json.loads(parameters) if parameters else None
@@ -274,7 +274,7 @@ async def get_project_transitions(
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
 
-    if project.user_id != current_user["id"]:
+    if project.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Access denied")
 
     transitions = service.get_project_transitions(project_id)
@@ -297,7 +297,7 @@ async def add_track(
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
 
-    if project.user_id != current_user["id"]:
+    if project.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Access denied")
 
     track = service.add_track(
@@ -322,7 +322,7 @@ async def get_project_tracks(
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
 
-    if project.user_id != current_user["id"]:
+    if project.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Access denied")
 
     tracks = service.get_project_tracks(project_id)
@@ -345,7 +345,7 @@ async def add_caption(
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
 
-    if project.user_id != current_user["id"]:
+    if project.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Access denied")
 
     caption = service.add_caption(
@@ -371,7 +371,7 @@ async def get_project_captions(
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
 
-    if project.user_id != current_user["id"]:
+    if project.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Access denied")
 
     captions = service.get_project_captions(project_id, video_asset_id)
@@ -390,7 +390,7 @@ async def delete_caption(
         raise HTTPException(status_code=404, detail="Caption not found")
 
     project = service.get_project(caption.project_id)
-    if not project or project.user_id != current_user["id"]:
+    if not project or project.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Access denied")
 
     success = service.delete_caption(caption_id)
@@ -405,7 +405,7 @@ async def get_monetization_settings(
 ):
     """Get monetization settings for a project."""
     project = session.get(VideoProjectDB, project_id)
-    if not project or project.user_id != current_user["id"]:
+    if not project or project.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Access denied")
 
     monetization = session.exec(
@@ -443,7 +443,7 @@ async def update_monetization_settings(
 ):
     """Update monetization settings for a project."""
     project = session.get(VideoProjectDB, project_id)
-    if not project or project.user_id != current_user["id"]:
+    if not project or project.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Access denied")
 
     body = await request.json()
@@ -504,7 +504,7 @@ async def publish_project(
     """Publish a project as a video."""
 
     project = session.get(VideoProjectDB, project_id)
-    if not project or project.user_id != current_user["id"]:
+    if not project or project.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Access denied")
 
     if project.status == "published":
@@ -538,7 +538,7 @@ async def export_project(
     """Export a project (placeholder - actual rendering would be async)."""
 
     project = session.get(VideoProjectDB, project_id)
-    if not project or project.user_id != current_user["id"]:
+    if not project or project.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Access denied")
 
     body = await request.json()
@@ -566,7 +566,7 @@ async def get_export_status(
     """Get export status for a project."""
 
     project = session.get(VideoProjectDB, project_id)
-    if not project or project.user_id != current_user["id"]:
+    if not project or project.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Access denied")
 
     return {
@@ -589,12 +589,12 @@ async def duplicate_project(
     import uuid
 
     original = session.get(VideoProjectDB, project_id)
-    if not original or original.user_id != current_user["id"]:
+    if not original or original.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Access denied")
 
     duplicate = VideoProjectDB(
         id=str(uuid.uuid4()),
-        user_id=current_user["id"],
+        user_id=current_user.id,
         title=f"{original.title} (Copy)",
         description=original.description,
         status="draft",
@@ -624,7 +624,7 @@ async def add_keyframe(
     """Add a keyframe to a track."""
 
     project = session.get(VideoProjectDB, project_id)
-    if not project or project.user_id != current_user["id"]:
+    if not project or project.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Access denied")
 
     body = await request.json()
@@ -651,7 +651,7 @@ async def get_keyframes(
 ):
     """Get all keyframes for a track."""
     project = session.get(VideoProjectDB, project_id)
-    if not project or project.user_id != current_user["id"]:
+    if not project or project.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Access denied")
 
     keyframes = session.exec(
@@ -684,7 +684,7 @@ async def delete_keyframe(
         raise HTTPException(status_code=404, detail="Keyframe not found")
 
     project = session.get(VideoProjectDB, keyframe.project_id)
-    if not project or project.user_id != current_user["id"]:
+    if not project or project.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Access denied")
 
     session.delete(keyframe)
@@ -704,7 +704,7 @@ async def set_color_grade(
     """Set color grading for a track."""
 
     project = session.get(VideoProjectDB, project_id)
-    if not project or project.user_id != current_user["id"]:
+    if not project or project.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Access denied")
 
     body = await request.json()
@@ -766,7 +766,7 @@ async def get_color_grade(
 ):
     """Get color grading for a track."""
     project = session.get(VideoProjectDB, project_id)
-    if not project or project.user_id != current_user["id"]:
+    if not project or project.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Access denied")
 
     color_grade = session.exec(
@@ -802,7 +802,7 @@ async def set_audio_mix(
     """Set audio mixing for a track."""
 
     project = session.get(VideoProjectDB, project_id)
-    if not project or project.user_id != current_user["id"]:
+    if not project or project.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Access denied")
 
     body = await request.json()
@@ -864,7 +864,7 @@ async def get_audio_mix(
 ):
     """Get audio mixing for a track."""
     project = session.get(VideoProjectDB, project_id)
-    if not project or project.user_id != current_user["id"]:
+    if not project or project.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Access denied")
 
     audio_mix = session.exec(
@@ -902,7 +902,7 @@ async def set_chroma_key(
     """Set chroma key (green screen) settings for a track."""
 
     project = session.get(VideoProjectDB, project_id)
-    if not project or project.user_id != current_user["id"]:
+    if not project or project.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Access denied")
 
     body = await request.json()
@@ -956,7 +956,7 @@ async def get_chroma_key(
 ):
     """Get chroma key settings for a track."""
     project = session.get(VideoProjectDB, project_id)
-    if not project or project.user_id != current_user["id"]:
+    if not project or project.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Access denied")
 
     chroma_key = session.exec(
@@ -990,7 +990,7 @@ async def add_effect(
     """Add an effect to a track."""
 
     project = session.get(VideoProjectDB, project_id)
-    if not project or project.user_id != current_user["id"]:
+    if not project or project.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Access denied")
 
     body = await request.json()
@@ -1018,7 +1018,7 @@ async def get_effects(
 ):
     """Get all effects for a track."""
     project = session.get(VideoProjectDB, project_id)
-    if not project or project.user_id != current_user["id"]:
+    if not project or project.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Access denied")
 
     effects = session.exec(
@@ -1052,10 +1052,62 @@ async def delete_effect(
         raise HTTPException(status_code=404, detail="Effect not found")
 
     project = session.get(VideoProjectDB, effect.project_id)
-    if not project or project.user_id != current_user["id"]:
+    if not project or project.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Access denied")
 
     session.delete(effect)
     session.commit()
 
     return {"success": True}
+
+
+# --- Phase 2.7: timeline JSON save/load ------------------------------------
+
+
+@router.put("/projects/{project_id}/timeline")
+async def save_project_timeline(
+    project_id: str,
+    body: dict,
+    current_user: dict = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    """Persist the multi-track timeline JSON for an editor project.
+
+    Body shape:
+        { "tracks": [...], "duration": 12.5, "version": 1 }
+
+    Stored as a JSON string in VideoProjectDB.settings to avoid a schema
+    migration. settings is opaque to the rest of the system.
+    """
+    project = session.get(VideoProjectDB, project_id)
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    if project.user_id != current_user["id"]:
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    project.settings = json.dumps({"timeline": body})
+    project.updated_at = datetime.now(UTC)
+    session.add(project)
+    session.commit()
+    return {"success": True, "project_id": project_id}
+
+
+@router.get("/projects/{project_id}/timeline")
+async def get_project_timeline(
+    project_id: str,
+    current_user: dict = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    project = session.get(VideoProjectDB, project_id)
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    if project.user_id != current_user["id"]:
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    if not project.settings:
+        return {"timeline": None}
+    try:
+        data = json.loads(project.settings)
+    except Exception:
+        return {"timeline": None}
+    return data

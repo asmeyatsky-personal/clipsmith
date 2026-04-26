@@ -11,10 +11,12 @@ import {
 import { Suspense, useEffect, useState, useRef, useMemo } from 'react';
 import { videoService, CaptionDTO } from '@/lib/api/video';
 import { VideoResponseDTO } from '@/lib/types';
+import { apiClient } from '@/lib/api/client';
 
 function EditorPageInner() {
     const searchParams = useSearchParams();
     const videoId = searchParams.get('v') ?? '';
+    const projectIdParam = searchParams.get('p') ?? undefined;
     const [video, setVideo] = useState<VideoResponseDTO | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -104,9 +106,31 @@ function EditorPageInner() {
         alert(`Color Grading Preset "${presetName}" applied (simulated)`);
     };
 
-    const handleSceneDetection = () => {
-        alert("AI Scene Detection triggered (simulated)! Auto-cutting would happen here.");
+    const handleSceneDetection = async () => {
+        if (!videoId) return;
+        try {
+            await videoService.detectScenes(videoId);
+            alert("Scene detection queued. Refresh chapters in ~30s.");
+        } catch (err: unknown) {
+            alert(`Scene detection failed: ${err instanceof Error ? err.message : 'unknown'}`);
+        }
     };
+
+    const handleVoiceEnhance = async () => {
+        if (!videoId) return;
+        try {
+            await videoService.enhanceVoice(videoId);
+            alert("Voice enhancement queued. Re-load video in ~1m.");
+        } catch (err: unknown) {
+            alert(`Voice enhancement failed: ${err instanceof Error ? err.message : 'unknown'}`);
+        }
+    };
+
+    const [chapters, setChapters] = useState<{ id: string; title: string; start_time: number; end_time: number; auto: boolean }[]>([]);
+    useEffect(() => {
+        if (!videoId) return;
+        videoService.getChapters(videoId).then((r) => setChapters(r.items)).catch(() => {});
+    }, [videoId]);
 
     return (
         <div className="flex h-screen bg-gray-100 dark:bg-gray-900">
@@ -305,10 +329,10 @@ function EditorPageInner() {
                             </p>
                         </div>
 
-                        {/* Simulated AI Scene Detection */}
+                        {/* AI Scene Detection (Phase 2.2) */}
                         <div className="border-t border-gray-200 dark:border-gray-700 pt-4 mt-4">
                             <h3 className="text-md font-semibold mb-2 flex items-center gap-2">
-                                <Camera size={18} /> AI Scene Detection (Simulated)
+                                <Camera size={18} /> AI Scene Detection
                             </h3>
                             <button
                                 onClick={handleSceneDetection}
@@ -316,8 +340,42 @@ function EditorPageInner() {
                             >
                                 Detect Scenes & Auto-Cut
                             </button>
+                            {chapters.length > 0 && (
+                                <ul className="mt-2 max-h-32 overflow-y-auto text-xs text-gray-700 dark:text-gray-300 divide-y divide-gray-200 dark:divide-gray-700">
+                                    {chapters.map((c) => (
+                                        <li
+                                            key={c.id}
+                                            className="py-1 flex items-center justify-between cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 px-2 rounded"
+                                            onClick={() => handlePlayheadChange(c.start_time)}
+                                        >
+                                            <span>
+                                                {c.title}
+                                                {c.auto && (
+                                                    <span className="ml-2 text-[10px] text-indigo-500">auto</span>
+                                                )}
+                                            </span>
+                                            <span className="text-gray-500">
+                                                {c.start_time.toFixed(1)}s
+                                            </span>
+                                        </li>
+                                    ))}
+                                </ul>
+                            )}
+                        </div>
+
+                        {/* Voice enhancement (Phase 2.5) */}
+                        <div className="border-t border-gray-200 dark:border-gray-700 pt-4 mt-4">
+                            <h3 className="text-md font-semibold mb-2 flex items-center gap-2">
+                                <Volume2 size={18} /> Enhance voice
+                            </h3>
+                            <button
+                                onClick={handleVoiceEnhance}
+                                className="w-full px-4 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white font-semibold transition-colors"
+                            >
+                                Reduce noise + boost voice
+                            </button>
                             <p className="text-xs text-gray-500 mt-2">
-                                Analyze video content to automatically detect scene changes and create cuts.
+                                Bandpass + compander; uses RNNoise when configured.
                             </p>
                         </div>
 

@@ -56,8 +56,34 @@ export const videoService = {
 
     async getCaptions(videoId: string): Promise<CaptionDTO[]> {
         return await apiClient<CaptionDTO[]>(`/videos/${videoId}/captions`);
-    }
+    },
+
+    async getChapters(videoId: string): Promise<{ items: ChapterMarker[] }> {
+        return await apiClient<{ items: ChapterMarker[] }>(`/videos/${videoId}/chapters`);
+    },
+
+    async detectScenes(videoId: string): Promise<{ queued: boolean }> {
+        return await apiClient<{ queued: boolean }>(
+            `/videos/${videoId}/scenes/detect`,
+            { method: 'POST' },
+        );
+    },
+
+    async enhanceVoice(videoId: string): Promise<{ queued: boolean }> {
+        return await apiClient<{ queued: boolean }>(
+            `/videos/${videoId}/voice/enhance`,
+            { method: 'POST' },
+        );
+    },
 };
+
+export interface ChapterMarker {
+    id: string;
+    title: string;
+    start_time: number;
+    end_time: number;
+    auto: boolean;
+}
 
 export interface CaptionDTO {
     id: string;
