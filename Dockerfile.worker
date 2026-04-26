@@ -1,0 +1,25 @@
+# RQ background worker — runs the same backend code but invokes
+# `rq worker` against the Redis queue. Required for video transcoding
+# and caption generation in production.
+FROM python:3.12-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONPATH=/app
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ffmpeg \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY backend/requirements.txt .
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
+
+COPY backend/ /app/backend/
+
+# RQ worker. Listens on the same queues defined in
+# backend/infrastructure/queue/__init__.py
+CMD ["python", "-m", "rq.cli", "worker", "video_processing", "default"]

@@ -64,3 +64,22 @@ class SQLiteInteractionRepository:
     def list_comments(self, video_id: str) -> List[CommentDB]:
         statement = select(CommentDB).where(CommentDB.video_id == video_id).order_by(col(CommentDB.created_at).desc())
         return list(self.session.exec(statement).all())
+
+    def count_comments(self, video_id: str) -> int:
+        from sqlmodel import func
+        statement = select(func.count()).select_from(CommentDB).where(
+            CommentDB.video_id == video_id
+        )
+        return int(self.session.exec(statement).one())
+
+    def count_comments_for_videos(self, video_ids: list[str]) -> dict[str, int]:
+        """Batch comment counts for the feed endpoint."""
+        if not video_ids:
+            return {}
+        from sqlmodel import func
+        statement = (
+            select(CommentDB.video_id, func.count())
+            .where(CommentDB.video_id.in_(video_ids))
+            .group_by(CommentDB.video_id)
+        )
+        return {row[0]: int(row[1]) for row in self.session.exec(statement).all()}

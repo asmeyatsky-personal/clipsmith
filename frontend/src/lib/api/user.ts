@@ -20,5 +20,28 @@ export const userService = {
 
     getFollowStatus: async (userId: string): Promise<FollowStatusDTO> => {
         return apiClient<FollowStatusDTO>(`/users/${userId}/follow_status`);
-    }
+    },
+
+    updateProfile: async (data: { bio?: string; avatar_url?: string | null }) => {
+        return apiClient(`/users/me`, {
+            method: 'PATCH',
+            body: JSON.stringify(data),
+        });
+    },
+
+    listFollowers: async (userId: string) => {
+        return apiClient<{ items: { id: string; username: string }[] }>(
+            `/users/${userId}/followers`,
+        );
+    },
+
+    listFollowing: async (userId: string) => {
+        return apiClient<{ items: { id: string; username: string }[] }>(
+            `/users/${userId}/following`,
+        );
+    },
+
+    listMyLikes: async () => {
+        return apiClient<{ items: unknown[] }>(`/users/me/likes`);
+    },
 };

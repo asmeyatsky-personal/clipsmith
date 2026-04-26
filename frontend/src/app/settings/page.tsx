@@ -98,6 +98,31 @@ export default function SettingsPage() {
                             <div className="text-xs text-zinc-500">Email</div>
                             <div>{user.email}</div>
                         </div>
+                        <Link
+                            href="/settings/edit-profile"
+                            className="w-full px-4 py-3 hover:bg-zinc-800/50 block"
+                        >
+                            <div className="font-medium">Edit profile</div>
+                            <div className="text-xs text-zinc-500">Bio, avatar</div>
+                        </Link>
+                        <Link
+                            href={`/profile/followers?uid=${user.id}&mode=followers`}
+                            className="w-full px-4 py-3 hover:bg-zinc-800/50 block"
+                        >
+                            <div className="font-medium">Followers</div>
+                        </Link>
+                        <Link
+                            href={`/profile/followers?uid=${user.id}&mode=following`}
+                            className="w-full px-4 py-3 hover:bg-zinc-800/50 block"
+                        >
+                            <div className="font-medium">Following</div>
+                        </Link>
+                        <Link
+                            href="/me/likes"
+                            className="w-full px-4 py-3 hover:bg-zinc-800/50 block"
+                        >
+                            <div className="font-medium">Liked videos</div>
+                        </Link>
                     </div>
                 </section>
 

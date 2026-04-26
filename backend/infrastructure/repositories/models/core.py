@@ -12,6 +12,9 @@ class UserDB(SQLModel, table=True):
     email: str = Field(unique=True, index=True)
     hashed_password: str
     is_active: bool = Field(default=True)
+    bio: str = Field(default="", max_length=500)
+    avatar_url: Optional[str] = Field(default=None)
+    email_verified: bool = Field(default=False, index=True)  # for A2
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 

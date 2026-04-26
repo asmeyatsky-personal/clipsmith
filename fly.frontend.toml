@@ -1,0 +1,27 @@
+# Fly.io app config — frontend (static export served via nginx)
+#
+# Deploy:
+#   fly launch -c fly.frontend.toml
+#   fly deploy -c fly.frontend.toml
+#
+# The frontend is a Next.js static export. We serve it from nginx.
+
+app = "clipsmith-frontend"
+primary_region = "iad"
+
+[build]
+  dockerfile = "Dockerfile.frontend"
+
+[env]
+  PORT = "3000"
+
+[http_service]
+  internal_port = 3000
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 0
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "256mb"

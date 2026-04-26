@@ -38,11 +38,13 @@ class VideoResponseDTO(BaseModel):
     title: str
     description: str
     creator_id: str
+    creator_username: str | None = None  # resolved from User repo when feed serializes
     status: VideoStatus
     url: str | None
     thumbnail_url: str | None
     views: int
     likes: int
+    comments: int = 0  # comment count badge
     duration: float
     # Pydantic 2 will accept either str or datetime here and serialize as ISO 8601.
     created_at: datetime | None = None

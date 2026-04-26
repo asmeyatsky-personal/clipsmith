@@ -81,11 +81,21 @@ jobs:
         JWT_SECRET_KEY: ci-test-secret-key-not-for-production
         DATABASE_URL: sqlite:///test.db
       run: |
-        python -m pytest backend/tests -v --tb=short \
+        python -m pytest backend/tests --ignore=backend/tests/smoke -v --tb=short \
           --cov=backend \
           --cov-report=term-missing \
           --cov-report=xml \
           --cov-fail-under=60
+
+    - name: Run E2E smoke tests
+      env:
+        REDIS_HOST: localhost
+        REDIS_PORT: 6379
+        JWT_SECRET_KEY: ci-test-secret-key-not-for-production
+        DATABASE_URL: sqlite:///clipsmith-smoke.db
+      run: |
+        rm -f clipsmith-smoke.db
+        python -m pytest backend/tests/smoke -v --tb=short
 
     - name: Security dependency audit (blocking)
       working-directory: ./backend
@@ -117,6 +127,10 @@ jobs:
     - name: Run frontend lint
       working-directory: ./frontend
       run: npm run lint
+
+    - name: Run frontend unit tests
+      working-directory: ./frontend
+      run: npm test
 
     - name: Build frontend
       working-directory: ./frontend

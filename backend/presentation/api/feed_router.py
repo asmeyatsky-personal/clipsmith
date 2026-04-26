@@ -44,20 +44,58 @@ def _optional_current_user(
     return user_repo.get_by_id(user_id)
 
 
-def _to_dto(v) -> VideoResponseDTO:
+def _to_dto(
+    v,
+    creator_username: str | None = None,
+    comment_count: int = 0,
+) -> VideoResponseDTO:
     return VideoResponseDTO(
         id=v.id,
         title=v.title,
         description=v.description,
         creator_id=v.creator_id,
+        creator_username=creator_username,
         url=v.url,
         thumbnail_url=v.thumbnail_url,
         status=v.status,
         views=v.views,
         likes=v.likes,
+        comments=comment_count,
         duration=v.duration,
         created_at=v.created_at,
     )
+
+
+def _enrich_videos(
+    videos: list,
+    user_repo: UserRepositoryPort,
+    interaction_repo: InteractionRepositoryPort,
+) -> list[VideoResponseDTO]:
+    """Resolve creator usernames + comment counts in batch (avoid N+1)."""
+    if not videos:
+        return []
+    creator_ids = list({v.creator_id for v in videos})
+    usernames: dict[str, str] = {}
+    for cid in creator_ids:
+        u = user_repo.get_by_id(cid)
+        if u:
+            usernames[cid] = u.username
+    comment_counts: dict[str, int] = {}
+    if hasattr(interaction_repo, "count_comments_for_videos"):
+        try:
+            comment_counts = interaction_repo.count_comments_for_videos(
+                [v.id for v in videos]
+            )
+        except Exception:
+            pass
+    return [
+        _to_dto(
+            v,
+            creator_username=usernames.get(v.creator_id),
+            comment_count=comment_counts.get(v.id, 0),
+        )
+        for v in videos
+    ]
 
 
 @router.get("/", response_model=PaginatedVideoResponseDTO)
@@ -100,7 +138,7 @@ def get_feed(
         total_count = video_repo.count_all()
 
     return PaginatedVideoResponseDTO(
-        items=[_to_dto(v) for v in videos],
+        items=_enrich_videos(videos, user_repo, interaction_repo),
         total=total_count,
         page=page,
         page_size=page_size,
@@ -113,6 +151,8 @@ def get_trending_feed(
     page: Annotated[int, Query(ge=1)] = 1,
     page_size: Annotated[int, Query(ge=1, le=100)] = 20,
     video_repo: VideoRepositoryPort = Depends(get_video_repo),
+    interaction_repo: InteractionRepositoryPort = Depends(get_interaction_repo),
+    user_repo: UserRepositoryPort = Depends(get_user_repo),
 ):
     all_videos = video_repo.find_all(offset=0, limit=200)
     trending = sorted(all_videos, key=lambda v: (v.views + v.likes * 5), reverse=True)
@@ -120,7 +160,7 @@ def get_trending_feed(
     paginated = trending[start : start + page_size]
     total = len(trending)
     return PaginatedVideoResponseDTO(
-        items=[_to_dto(v) for v in paginated],
+        items=_enrich_videos(paginated, user_repo, interaction_repo),
         total=total,
         page=page,
         page_size=page_size,

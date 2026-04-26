@@ -22,6 +22,10 @@ from ..application.use_cases.password_reset import (
     RequestPasswordResetUseCase,
 )
 from ..application.use_cases.block_user import BlockUserUseCase, UnblockUserUseCase
+from ..application.use_cases.email_verification import (
+    ConfirmEmailVerificationUseCase,
+    RequestEmailVerificationUseCase,
+)
 from ..application.use_cases.report_content import ReportContentUseCase
 from ..application.use_cases.register_user import RegisterUserUseCase
 from ..application.use_cases.upload_video import UploadVideoUseCase
@@ -30,6 +34,7 @@ from ..domain.ports.auth_security_port import (
     TwoFactorRepositoryPort,
 )
 from ..domain.ports.email_port import EmailSenderPort
+from ..domain.ports.email_verification_port import EmailVerificationRepositoryPort
 from ..domain.ports.queue_port import VideoQueuePort
 from ..domain.ports.repository_ports import (
     ContentModerationRepositoryPort,
@@ -98,6 +103,9 @@ from ..infrastructure.repositories.sqlite_notification_repo import (
 from ..infrastructure.repositories.sqlite_payment_repo import SQLitePaymentRepository
 from ..infrastructure.repositories.sqlite_device_token_repo import (
     SQLiteDeviceTokenRepository,
+)
+from ..infrastructure.repositories.sqlite_email_verification_repo import (
+    SQLiteEmailVerificationRepository,
 )
 from ..infrastructure.repositories.sqlite_user_block_repo import (
     SQLiteUserBlockRepository,
@@ -307,6 +315,26 @@ def get_storage() -> StoragePort:
 
 def get_email_service() -> EmailSenderPort:
     return get_email_adapter()
+
+
+def get_email_verification_repo(
+    session: Session = Depends(get_session),
+) -> EmailVerificationRepositoryPort:
+    return SQLiteEmailVerificationRepository(session)
+
+
+def get_request_email_verification_use_case(
+    user_repo: UserRepositoryPort = Depends(get_user_repo),
+    verification_repo: EmailVerificationRepositoryPort = Depends(get_email_verification_repo),
+    email_sender: EmailSenderPort = Depends(get_email_service),
+) -> RequestEmailVerificationUseCase:
+    return RequestEmailVerificationUseCase(user_repo, verification_repo, email_sender)
+
+
+def get_confirm_email_verification_use_case(
+    verification_repo: EmailVerificationRepositoryPort = Depends(get_email_verification_repo),
+) -> ConfirmEmailVerificationUseCase:
+    return ConfirmEmailVerificationUseCase(verification_repo)
 
 
 def get_password_reset_repo(

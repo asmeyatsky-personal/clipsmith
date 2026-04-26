@@ -8,12 +8,15 @@ export interface VideoResponseDTO {
     title: string;
     description: string;
     creator_id: string;
+    creator_username?: string | null;
     url: string | null;
     thumbnail_url?: string | null;
     status: string;
     views: number;
     likes: number;
+    comments?: number;
     duration: number;
+    created_at?: string | null;
 }
 
 export interface PaginatedVideoResponse {

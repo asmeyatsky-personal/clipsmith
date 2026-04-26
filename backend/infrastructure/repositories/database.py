@@ -135,6 +135,10 @@ def create_db_and_tables():
         LessonProgressDB,
     )
 
+    # Tables added later via Alembic that aren't in the legacy import block —
+    # ensure they exist on metadata so create_all picks them up in dev/test.
+    from ..adapters.audit_log import AuditLogDB  # noqa: F401
+
     SQLModel.metadata.create_all(engine)
     _seed_data()
 

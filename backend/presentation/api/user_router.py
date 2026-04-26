@@ -16,11 +16,13 @@ from ..dependencies import (
     get_block_user_use_case,
     get_current_user as _resolve_current_user,
     get_follow_repo,
+    get_interaction_repo,
     get_unblock_user_use_case,
     get_user_block_repo,
     get_user_repo,
     get_video_repo,
 )
+from ...domain.ports.repository_ports import InteractionRepositoryPort
 from ...domain.ports.user_block_port import UserBlockRepositoryPort
 
 router = APIRouter(prefix="/users", tags=["users"])
@@ -112,3 +114,115 @@ def list_blocked_users(
     repo: UserBlockRepositoryPort = Depends(get_user_block_repo),
 ):
     return {"blocked_user_ids": repo.list_blocked_ids(current_user["user_id"])}
+
+
+# --- Profile editing (B1) ---
+
+
+@router.patch("/me")
+def update_my_profile(
+    body: dict,
+    current_user: Annotated[dict, Depends(get_current_user)],
+    user_repo: UserRepositoryPort = Depends(get_user_repo),
+):
+    user = user_repo.get_by_id(current_user["user_id"])
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    bio = body.get("bio")
+    avatar_url = body.get("avatar_url")
+    if bio is not None and len(str(bio)) > 500:
+        raise HTTPException(status_code=400, detail="bio max 500 chars")
+
+    updated = user.with_profile_update(bio=bio, avatar_url=avatar_url)
+    saved = user_repo.save(updated)
+    return {
+        "id": saved.id,
+        "username": saved.username,
+        "email": saved.email,
+        "is_active": saved.is_active,
+        "bio": saved.bio,
+        "avatar_url": saved.avatar_url,
+    }
+
+
+# --- Followers / Following lists (B3) ---
+
+
+def _serialize_user_summary(u):
+    return {
+        "id": u.id,
+        "username": u.username,
+        "bio": getattr(u, "bio", ""),
+        "avatar_url": getattr(u, "avatar_url", None),
+    }
+
+
+@router.get("/{user_id}/followers")
+def list_followers(
+    user_id: str,
+    follow_repo: FollowRepositoryPort = Depends(get_follow_repo),
+    user_repo: UserRepositoryPort = Depends(get_user_repo),
+):
+    follows = follow_repo.get_followers(user_id)
+    items = []
+    for f in follows:
+        u = user_repo.get_by_id(f.follower_id)
+        if u:
+            items.append(_serialize_user_summary(u))
+    return {"items": items, "count": len(items)}
+
+
+@router.get("/{user_id}/following")
+def list_following(
+    user_id: str,
+    follow_repo: FollowRepositoryPort = Depends(get_follow_repo),
+    user_repo: UserRepositoryPort = Depends(get_user_repo),
+):
+    follows = follow_repo.get_following(user_id)
+    items = []
+    for f in follows:
+        u = user_repo.get_by_id(f.followed_id)
+        if u:
+            items.append(_serialize_user_summary(u))
+    return {"items": items, "count": len(items)}
+
+
+# --- My liked videos (B4) ---
+
+
+@router.get("/me/likes")
+def list_my_liked_videos(
+    current_user: Annotated[dict, Depends(get_current_user)],
+    interaction_repo: InteractionRepositoryPort = Depends(get_interaction_repo),
+    video_repo: VideoRepositoryPort = Depends(get_video_repo),
+):
+    """Videos the current user has liked. Best-effort: relies on interaction
+    repo exposing a list-of-likes method; returns [] if the method is absent."""
+    list_likes = getattr(interaction_repo, "list_likes_by_user", None)
+    if not list_likes:
+        # Fallback: scan recent videos and check has_user_liked. Not scalable,
+        # but works for v1 with small video counts.
+        videos = video_repo.find_all(offset=0, limit=200)
+        liked = [
+            v for v in videos
+            if interaction_repo.has_user_liked(current_user["user_id"], v.id)
+        ]
+    else:
+        like_ids = list_likes(current_user["user_id"])
+        liked = [v for v in (video_repo.get_by_id(i) for i in like_ids) if v]
+
+    items = [
+        {
+            "id": v.id,
+            "title": v.title,
+            "url": v.url,
+            "thumbnail_url": v.thumbnail_url,
+            "creator_id": v.creator_id,
+            "views": v.views,
+            "likes": v.likes,
+            "duration": v.duration,
+        }
+        for v in liked
+    ]
+    return {"items": items, "count": len(items)}

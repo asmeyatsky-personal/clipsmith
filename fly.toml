@@ -1,0 +1,53 @@
+# Fly.io app config — backend (FastAPI + Postgres + Redis dependency)
+#
+# Deploy:
+#   fly launch       # one-time: create app, set primary region
+#   fly deploy       # subsequent
+#
+# Set secrets once:
+#   fly secrets set DATABASE_URL=postgresql+psycopg://... \
+#                   JWT_SECRET_KEY=$(python -c "import secrets;print(secrets.token_urlsafe(64))") \
+#                   STORAGE_TYPE=r2 \
+#                   R2_ACCOUNT_ID=... R2_ACCESS_KEY_ID=... R2_SECRET_ACCESS_KEY=... \
+#                   R2_BUCKET_NAME=clipsmith-media R2_PUBLIC_DOMAIN=media.clipsmith.app \
+#                   STRIPE_SECRET_KEY=... STRIPE_WEBHOOK_SECRET=... \
+#                   ASSEMBLYAI_API_KEY=... OPENAI_API_KEY=... \
+#                   APNS_KEY_PATH=/secrets/AuthKey.p8 APNS_KEY_ID=... APNS_TEAM_ID=... APNS_TOPIC=app.clipsmith \
+#                   SMTP_HOST=smtp.resend.com SMTP_PORT=465 SMTP_USER=resend SMTP_PASSWORD=... FROM_EMAIL=noreply@clipsmith.app \
+#                   SENTRY_DSN=...
+
+app = "clipsmith-backend"
+primary_region = "iad"
+kill_signal = "SIGINT"
+kill_timeout = "30s"
+
+[build]
+  dockerfile = "Dockerfile.backend"
+
+[env]
+  PORT = "8000"
+  ENVIRONMENT = "production"
+  ALLOWED_ORIGINS = "https://clipsmith.app,capacitor://localhost,https://localhost"
+
+[http_service]
+  internal_port = 8000
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 1
+  processes = ["app"]
+
+  [[http_service.checks]]
+    interval = "30s"
+    timeout = "5s"
+    grace_period = "30s"
+    method = "GET"
+    path = "/health"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"
+
+[processes]
+  app = "uvicorn backend.main:app --host 0.0.0.0 --port 8000 --workers 2"
+  worker = "python -m rq.cli worker video_processing default --url $REDIS_URL"

@@ -56,6 +56,35 @@ export function MobileVideoFeed({ initialFeedType = 'foryou' }: MobileVideoFeedP
         [feedType, user],
     );
 
+    // Pull-to-refresh: track downward drag at top of feed.
+    const [pullY, setPullY] = useState(0);
+    const [refreshing, setRefreshing] = useState(false);
+    const touchStartY = useRef<number | null>(null);
+
+    const onTouchStart = (e: React.TouchEvent) => {
+        const el = containerRef.current;
+        if (el && el.scrollTop <= 0) {
+            touchStartY.current = e.touches[0].clientY;
+        }
+    };
+    const onTouchMove = (e: React.TouchEvent) => {
+        if (touchStartY.current === null) return;
+        const delta = e.touches[0].clientY - touchStartY.current;
+        if (delta > 0) {
+            setPullY(Math.min(delta, 120));
+        }
+    };
+    const onTouchEnd = async () => {
+        const y = pullY;
+        touchStartY.current = null;
+        setPullY(0);
+        if (y > 70 && !refreshing) {
+            setRefreshing(true);
+            await fetchPage(1);
+            setRefreshing(false);
+        }
+    };
+
     useEffect(() => {
         setVideos([]);
         setActiveIndex(0);
@@ -153,11 +182,26 @@ export function MobileVideoFeed({ initialFeedType = 'foryou' }: MobileVideoFeedP
                 )}
             </div>
 
+            {/* Pull-to-refresh indicator */}
+            {(pullY > 0 || refreshing) && (
+                <div
+                    className="absolute top-0 left-0 right-0 z-40 flex justify-center pointer-events-none"
+                    style={{ transform: `translateY(${refreshing ? 60 : pullY}px)` }}
+                >
+                    <div className="mt-2 bg-black/60 rounded-full px-3 py-1 text-xs">
+                        {refreshing ? 'Refreshing…' : pullY > 70 ? 'Release to refresh' : 'Pull to refresh'}
+                    </div>
+                </div>
+            )}
+
             {/* Feed */}
             <div
                 ref={containerRef}
                 className="h-full overflow-y-scroll snap-y snap-mandatory scroll-smooth"
                 style={{ scrollSnapType: 'y mandatory', WebkitOverflowScrolling: 'touch' }}
+                onTouchStart={onTouchStart}
+                onTouchMove={onTouchMove}
+                onTouchEnd={onTouchEnd}
             >
                 {videos.map((video, idx) => (
                     <FeedItem
@@ -389,7 +433,7 @@ function FeedItem({
                 />
                 <ActionButton
                     icon={<MessageCircle className="w-7 h-7" />}
-                    label="Comments"
+                    label={formatCount(video.comments ?? 0)}
                     onClick={onOpenComments}
                 />
                 <ActionButton
@@ -435,11 +479,14 @@ function FeedItem({
             {/* Bottom info */}
             <div className="absolute left-3 right-20 bottom-[max(env(safe-area-inset-bottom),16px)] z-20 space-y-2">
                 <Link
-                    href={`/profile?u=${video.creator_id}`}
+                    href={`/profile?u=${video.creator_username ?? video.creator_id}`}
                     className="font-bold text-base inline-block"
                 >
-                    @{video.creator_id}
+                    @{video.creator_username ?? video.creator_id}
                 </Link>
+                <div className="text-xs text-white/60">
+                    {formatCount(video.views)} views
+                </div>
                 <p className="text-sm leading-snug line-clamp-2">
                     <RichText text={video.title} />
                 </p>

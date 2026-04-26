@@ -23,6 +23,10 @@ from ...application.use_cases.password_reset import (
     ConfirmPasswordResetUseCase,
     RequestPasswordResetUseCase,
 )
+from ...application.use_cases.email_verification import (
+    ConfirmEmailVerificationUseCase,
+    RequestEmailVerificationUseCase,
+)
 from ...application.use_cases.register_user import RegisterUserUseCase
 from ..dependencies import (
     get_2fa_disable_use_case,
@@ -33,8 +37,11 @@ from ..dependencies import (
     get_authenticate_use_case,
     get_confirm_password_reset_use_case,
     get_current_user,  # re-exported for legacy callers (analytics_router, moderation_router, etc.)
+    get_email_service,
     get_register_use_case,
     get_request_password_reset_use_case,
+    get_session_for_router,
+    get_user_repo,
 )
 
 # Backwards-compat: routers historically did `from .auth_router import get_current_user`
@@ -43,6 +50,35 @@ __all__ = ["router", "get_current_user", "limiter"]
 limiter = Limiter(key_func=get_remote_address)
 router = APIRouter(prefix="/auth", tags=["auth"])
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
+
+
+# --- Email verification (A2) ---
+
+
+@router.post("/verify-email/request")
+def request_email_verification(
+    current_user=Depends(get_current_user),
+    user_repo=Depends(get_user_repo),
+    email_sender=Depends(get_email_service),
+    session=Depends(get_session_for_router),
+):
+    use_case = RequestEmailVerificationUseCase(user_repo, email_sender, session)
+    try:
+        use_case.execute(current_user.id)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    return {"success": True, "message": "Verification email sent"}
+
+
+@router.post("/verify-email/{token}")
+def confirm_email_verification(
+    token: str,
+    session=Depends(get_session_for_router),
+):
+    use_case = ConfirmEmailVerificationUseCase(session)
+    if not use_case.execute(token):
+        raise HTTPException(status_code=400, detail="Invalid or expired token")
+    return {"success": True, "message": "Email verified"}
 
 
 @router.post(
