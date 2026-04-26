@@ -3,6 +3,11 @@
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Layers, Scissors, Music, Type, Subtitles, Palette, Volume2, Camera, Gauge, Loader2 } from 'lucide-react';
 import { Timeline } from '@/components/editor/timeline';
+import {
+    MultiTrackTimeline,
+    type TimelineTrack,
+    type TimelineClip,
+} from '@/components/editor/multi-track-timeline';
 import { Suspense, useEffect, useState, useRef, useMemo } from 'react';
 import { videoService, CaptionDTO } from '@/lib/api/video';
 import { VideoResponseDTO } from '@/lib/types';
@@ -353,15 +358,12 @@ function EditorPageInner() {
                     </div>
                 </div>
 
-                {/* Timeline */}
-                <div className="h-48 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-4">
-                    <h2 className="text-lg font-bold mb-4">Timeline</h2>
-                    <Timeline
-                        duration={video?.duration || 0}
-                        playhead={playhead}
-                        onPlayheadChange={handlePlayheadChange}
-                    />
-                </div>
+                {/* Multi-track timeline (Phase 2.6) */}
+                <MultiTrackEditorPanel
+                    duration={video?.duration || 0}
+                    playhead={playhead}
+                    onPlayheadChange={handlePlayheadChange}
+                />
             </main>
         </div>
     );
@@ -372,5 +374,89 @@ export default function EditorPage() {
         <Suspense fallback={<div className="flex justify-center items-center h-screen"><Loader2 className="animate-spin text-blue-500" size={48} /></div>}>
             <EditorPageInner />
         </Suspense>
+    );
+}
+
+
+function MultiTrackEditorPanel({
+    duration,
+    playhead,
+    onPlayheadChange,
+}: {
+    duration: number;
+    playhead: number;
+    onPlayheadChange: (t: number) => void;
+}) {
+    const [tracks, setTracks] = useState<TimelineTrack[]>([
+        {
+            id: 'video-1',
+            type: 'video',
+            clips: [
+                {
+                    id: 'main',
+                    start: 0,
+                    end: Math.max(duration, 5),
+                    label: 'Source clip',
+                },
+            ],
+        },
+        {
+            id: 'text-1',
+            type: 'text',
+            clips: [
+                { id: 't1', start: 0, end: 2.5, label: 'Title overlay' },
+            ],
+        },
+        {
+            id: 'music-1',
+            type: 'music',
+            clips: [],
+        },
+    ]);
+
+    // Re-sync the source-clip end whenever duration loads
+    useEffect(() => {
+        if (duration > 0) {
+            setTracks((prev) =>
+                prev.map((t) =>
+                    t.id === 'video-1'
+                        ? {
+                              ...t,
+                              clips: t.clips.map((c) => ({ ...c, end: duration })),
+                          }
+                        : t,
+                ),
+            );
+        }
+    }, [duration]);
+
+    const onClipChange = (trackId: string, clip: TimelineClip) => {
+        setTracks((prev) =>
+            prev.map((t) =>
+                t.id === trackId
+                    ? {
+                          ...t,
+                          clips: t.clips.map((c) => (c.id === clip.id ? clip : c)),
+                      }
+                    : t,
+            ),
+        );
+    };
+
+    return (
+        <div className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-4">
+            <h2 className="text-lg font-bold mb-3">Timeline</h2>
+            <MultiTrackTimeline
+                tracks={tracks}
+                duration={Math.max(duration, 5)}
+                playhead={playhead}
+                onPlayheadChange={onPlayheadChange}
+                onClipChange={onClipChange}
+            />
+            <p className="text-xs text-gray-500 mt-2">
+                Drag clips to reposition; drag edges to trim. Multi-track save
+                will land in Phase 2.7.
+            </p>
+        </div>
     );
 }

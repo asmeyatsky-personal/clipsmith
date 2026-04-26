@@ -51,11 +51,43 @@ class AssemblyAITranscriber(TranscriptionPort):
 
 
 class PlaceholderTranscriber(TranscriptionPort):
-    """Dev-mode no-op returning empty captions."""
+    """Dev-mode transcriber. Probes audio duration and emits a fixed set
+    of placeholder caption rows so the rest of the pipeline (UI, tests)
+    has something to render without an AssemblyAI key."""
+
+    _SAMPLES = (
+        "(transcription disabled in dev)",
+        "Set ASSEMBLYAI_API_KEY to enable real captions.",
+        "Or wire a Whisper adapter via TranscriptionPort.",
+    )
 
     def transcribe(self, audio_file_path: str) -> TranscriptionResult:
-        logger.warning("PlaceholderTranscriber: returning empty result")
-        return TranscriptionResult(full_text="", words=[], language=None)
+        duration = 30.0
+        try:
+            import ffmpeg
+
+            probe = ffmpeg.probe(audio_file_path)
+            duration = float(probe.get("format", {}).get("duration", 30.0))
+        except Exception:
+            pass
+
+        # Emit one TranscriptWord per sample so the use-case segmenter has
+        # timing info to chunk by.
+        seg = duration / max(len(self._SAMPLES), 1)
+        words: list[TranscriptWord] = []
+        for i, text in enumerate(self._SAMPLES):
+            words.append(
+                TranscriptWord(
+                    text=text + ".",  # trigger sentence-terminator chunking
+                    start_seconds=i * seg,
+                    end_seconds=(i + 1) * seg,
+                )
+            )
+        return TranscriptionResult(
+            full_text=" ".join(self._SAMPLES),
+            words=words,
+            language="en",
+        )
 
 
 def get_transcriber() -> TranscriptionPort:

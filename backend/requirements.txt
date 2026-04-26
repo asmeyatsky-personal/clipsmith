@@ -75,3 +75,4 @@ opentelemetry-instrumentation-fastapi==0.48b0
 alembic==1.13.3
 psycopg[binary]==3.2.3
 python-dotenv==1.0.1
+scenedetect[opencv-headless]==0.6.4

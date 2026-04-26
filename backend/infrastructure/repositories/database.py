@@ -141,6 +141,16 @@ def create_db_and_tables():
 
     SQLModel.metadata.create_all(engine)
     _seed_data()
+    # Phase 2.3: curated template starter set (idempotent)
+    try:
+        from .seed_templates import seed_ai_templates
+
+        with Session(engine) as session:
+            seed_ai_templates(session)
+    except Exception as e:
+        import logging as _log
+
+        _log.getLogger(__name__).warning("Template seed skipped: %s", e)
 
 
 def _seed_data():

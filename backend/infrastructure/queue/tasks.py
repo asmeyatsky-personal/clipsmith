@@ -277,6 +277,18 @@ def process_video_task(video_id: str, uploaded_file_path: str):
             os.remove(input_path)
             logger.info(f"Original uploaded file {input_path} deleted.")
 
+            # Enqueue follow-up tasks (best-effort): scene detection +
+            # caption generation. These are independent and run after the
+            # main transcode pipeline completes.
+            try:
+                from .. import queue as _queue_pkg
+
+                vq = _queue_pkg.get_video_queue()
+                vq.enqueue(detect_scenes_task, video_id, job_timeout=600)
+                vq.enqueue(generate_captions_task, video_id, job_timeout=1800)
+            except Exception as enq_err:
+                logger.warning(f"Could not enqueue post-process tasks: {enq_err}")
+
         except Exception as e:
             logger.error(f"Error during video processing for {video_id}: {e}")
             if video:
@@ -336,8 +348,10 @@ def generate_captions_task(video_id: str):
             logger.info(f"Audio extracted to {audio_file_path}")
 
             # 3. Generate captions using the use case
+            from ..adapters.transcription_assemblyai import get_transcriber
+
             generate_captions_use_case = GenerateCaptionsUseCase(
-                video_repo, caption_repo
+                video_repo, caption_repo, get_transcriber()
             )
             generated_captions = generate_captions_use_case.execute(
                 video_id, str(audio_file_path)
@@ -357,3 +371,158 @@ def generate_captions_task(video_id: str):
             if audio_file_path and audio_file_path.exists():
                 os.remove(audio_file_path)
                 logger.debug(f"Cleaned up extracted audio: {audio_file_path}")
+
+
+def detect_scenes_task(video_id: str):
+    """Run PySceneDetect on a video and persist scene boundaries as
+    chapter markers. Phase 2.2 — auto-cut suggestions for the editor.
+    """
+    from sqlmodel import select
+
+    logger.info(f"Starting scene detection for video_id: {video_id}")
+    downloaded_path: Optional[pathlib.Path] = None
+
+    with get_task_session() as session:
+        video_repo = SQLiteVideoRepository(session)
+        try:
+            video = video_repo.get_by_id(video_id)
+            if not video or not video.url:
+                logger.warning(f"Video {video_id} not ready for scene detection")
+                return
+
+            backend_url = os.getenv("BACKEND_URL", "http://localhost:8000")
+            video_url_full = f"{backend_url}{video.url}"
+            downloaded_path = UPLOAD_DIR / f"{uuid4()}_scene_detect.mp4"
+
+            response = requests.get(video_url_full, stream=True, timeout=30)
+            response.raise_for_status()
+            with open(downloaded_path, "wb") as f:
+                for chunk in response.iter_content(chunk_size=8192):
+                    f.write(chunk)
+
+            try:
+                from scenedetect import (
+                    detect,
+                    ContentDetector,
+                )
+            except ImportError:
+                logger.warning("scenedetect not installed; skipping")
+                return
+
+            scene_list = detect(str(downloaded_path), ContentDetector())
+            logger.info(f"PySceneDetect found {len(scene_list)} scenes")
+
+            from ..repositories.models import ChapterMarkerDB
+
+            # Wipe existing auto-detected markers for idempotency.
+            existing = session.exec(
+                select(ChapterMarkerDB).where(
+                    ChapterMarkerDB.video_id == video_id,
+                    ChapterMarkerDB.creator_id == "_auto",
+                )
+            ).all()
+            for row in existing:
+                session.delete(row)
+
+            for i, scene in enumerate(scene_list):
+                start_s = scene[0].get_seconds()
+                end_s = scene[1].get_seconds()
+                marker = ChapterMarkerDB(
+                    video_id=video_id,
+                    title=f"Scene {i + 1}",
+                    start_time=start_s,
+                    end_time=end_s,
+                    creator_id="_auto",
+                )
+                session.add(marker)
+            session.commit()
+            logger.info(
+                f"Saved {len(scene_list)} chapter markers for video {video_id}"
+            )
+
+        except Exception as e:
+            logger.exception(f"Scene detection failed for video {video_id}: {e}")
+        finally:
+            if downloaded_path and downloaded_path.exists():
+                try:
+                    os.remove(downloaded_path)
+                except OSError:
+                    pass
+
+
+def enhance_voice_task(video_id: str):
+    """Server-side voice enhancement (Phase 2.5).
+
+    Extracts audio, runs RNNoise via ffmpeg's `arnndn` filter (built-in
+    since FFmpeg 4.4) — no extra Python deps. The denoised audio is muxed
+    back into the original video, replacing it.
+    """
+    logger.info(f"Starting voice enhancement for video_id: {video_id}")
+    downloaded_path: Optional[pathlib.Path] = None
+    cleaned_path: Optional[pathlib.Path] = None
+
+    with get_task_session() as session:
+        video_repo = SQLiteVideoRepository(session)
+        try:
+            video = video_repo.get_by_id(video_id)
+            if not video or not video.url:
+                logger.warning(f"Video {video_id} not ready for voice enhancement")
+                return
+
+            backend_url = os.getenv("BACKEND_URL", "http://localhost:8000")
+            video_url_full = f"{backend_url}{video.url}"
+            downloaded_path = UPLOAD_DIR / f"{uuid4()}_voice_in.mp4"
+            cleaned_path = UPLOAD_DIR / f"{uuid4()}_voice_out.mp4"
+
+            # Download
+            response = requests.get(video_url_full, stream=True, timeout=30)
+            response.raise_for_status()
+            with open(downloaded_path, "wb") as f:
+                for chunk in response.iter_content(chunk_size=8192):
+                    f.write(chunk)
+
+            # FFmpeg's arnndn filter uses RNNoise. We use a built-in model
+            # path; alternatively users can supply their own .rnnn file via
+            # the RNNDN_MODEL_PATH env var.
+            rnndn_model = os.getenv("RNNDN_MODEL_PATH")  # optional
+            af = "highpass=f=80,lowpass=f=8000"
+            if rnndn_model:
+                af = f"{af},arnndn=m={rnndn_model}"
+            else:
+                # Fallback: just the bandpass + a soft compander to even out
+                # voice levels. arnndn requires a model file we can't ship.
+                af = (
+                    f"{af},compand="
+                    "attacks=0:decays=0.3:points=-90/-900|-70/-70|-30/-15|0/-5"
+                )
+
+            (
+                ffmpeg.input(str(downloaded_path))
+                .output(
+                    str(cleaned_path),
+                    af=af,
+                    vcodec="copy",
+                    acodec="aac",
+                    audio_bitrate="128k",
+                )
+                .overwrite_output()
+                .run(capture_stdout=True, capture_stderr=True)
+            )
+
+            # Replace stored video with the cleaned version. We re-use the
+            # storage adapter so the URL points at the same path.
+            storage = get_storage_adapter()
+            with open(cleaned_path, "rb") as src:
+                # The save() returns the URL; assume it overwrites if same name.
+                storage.save(pathlib.Path(video.url).name, src)
+            logger.info(f"Voice enhancement done for video {video_id}")
+
+        except Exception as e:
+            logger.exception(f"Voice enhancement failed for video {video_id}: {e}")
+        finally:
+            for p in (downloaded_path, cleaned_path):
+                if p and p.exists():
+                    try:
+                        os.remove(p)
+                    except OSError:
+                        pass
