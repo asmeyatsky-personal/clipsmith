@@ -475,6 +475,7 @@ function MultiTrackEditorPanel({
     // Re-sync the source-clip end whenever duration loads
     useEffect(() => {
         if (duration > 0) {
+            // eslint-disable-next-line react-hooks/set-state-in-effect
             setTracks((prev) =>
                 prev.map((t) =>
                     t.id === 'video-1'

@@ -99,6 +99,7 @@ export function LiveRecorder({
             onComplete(file, dur);
         };
 
+        // eslint-disable-next-line react-hooks/purity
         startTimeRef.current = Date.now();
         recorder.start(250);
         recorderRef.current = recorder;

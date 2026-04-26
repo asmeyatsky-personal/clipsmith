@@ -17,14 +17,13 @@ class ClipsmithLogger:
         self.logger = structlog.get_logger(name)
         
         # Configure console and file handlers
-        logging.basicConfig(
-            level=logging.INFO,
-            format='%(message)s',
-            handlers=[
-                logging.StreamHandler(sys.stdout),
-                logging.FileHandler('logs/clipsmith.log')
-            ]
-        )
+        handlers = [logging.StreamHandler(sys.stdout)]
+        try:
+            os.makedirs("logs", exist_ok=True)
+            handlers.append(logging.FileHandler("logs/clipsmith.log"))
+        except OSError:
+            pass
+        logging.basicConfig(level=logging.INFO, format="%(message)s", handlers=handlers)
         
         # Configure JSON logger for structured output
         self.json_logger = jsonlogger

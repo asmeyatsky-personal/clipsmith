@@ -69,7 +69,7 @@ export default function TermsPage() {
 
                 <h2>Disclaimers</h2>
                 <p>
-                    The service is provided "as is" without warranties of any kind. To
+                    The service is provided &quot;as is&quot; without warranties of any kind. To
                     the maximum extent permitted by law, our liability is limited to
                     fees you have paid us in the twelve months preceding any claim.
                 </p>
