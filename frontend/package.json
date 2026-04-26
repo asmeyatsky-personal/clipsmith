@@ -34,7 +34,7 @@
     "framer-motion": "^12.23.26",
     "konva": "^9.3.22",
     "lucide-react": "^0.561.0",
-    "next": "16.0.10",
+    "next": "^16.2.4",
     "react": "19.2.1",
     "react-dom": "19.2.1",
     "react-konva": "^18.2.14",
