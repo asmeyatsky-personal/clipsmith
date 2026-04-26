@@ -37,10 +37,29 @@ async def _broadcast(party_id: str, message: dict, sender: WebSocket) -> None:
 async def watch_party_ws(
     websocket: WebSocket,
     party_id: str,
-    token: str = Query(...),
+    token: str | None = Query(default=None),
 ):
+    """Auth precedence: Sec-WebSocket-Protocol header `bearer.<jwt>` first
+    (preferred — token doesn't leak through proxy access logs), then `?token=`
+    query param as a fallback for clients that can't set subprotocols.
+    """
+    sub_proto: str | None = None
+    raw_token: str | None = None
+    proto_header = websocket.headers.get("sec-websocket-protocol", "")
+    for entry in (s.strip() for s in proto_header.split(",")):
+        if entry.startswith("bearer."):
+            raw_token = entry[len("bearer."):]
+            sub_proto = entry  # echo back to confirm
+            break
+    if not raw_token and token:
+        raw_token = token
+
+    if not raw_token:
+        await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
+        return
+
     try:
-        payload = JWTAdapter.verify_token(token)
+        payload = JWTAdapter.verify_token(raw_token)
         user_id = payload.get("sub") if isinstance(payload, dict) else None
     except Exception:
         await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
@@ -55,7 +74,10 @@ async def watch_party_ws(
             await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
             return
 
-    await websocket.accept()
+    if sub_proto:
+        await websocket.accept(subprotocol=sub_proto)
+    else:
+        await websocket.accept()
     _rooms[party_id].add(websocket)
     try:
         await _broadcast(party_id, {"type": "user_joined", "user_id": user_id}, websocket)

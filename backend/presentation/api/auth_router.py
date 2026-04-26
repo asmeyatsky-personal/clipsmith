@@ -1,4 +1,6 @@
-from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+import os
+
+from fastapi import APIRouter, Depends, Form, HTTPException, Request, Response, status
 from fastapi.security import OAuth2PasswordBearer
 from slowapi import Limiter
 from slowapi.util import get_remote_address
@@ -126,6 +128,40 @@ def login(
 def logout(response: Response):
     response.delete_cookie(key="access_token")
     return {"message": "Successfully logged out"}
+
+
+@router.get("/apple/start")
+def apple_signin_start():
+    """Sign in with Apple — redirect kick-off.
+
+    Production wiring requires an Apple Services ID, key, and team ID.
+    For Capacitor builds the iOS shell intercepts this URL and opens
+    ASAuthorizationAppleIDProvider natively. For the web build we'll
+    redirect to Apple's authorize endpoint once the env vars are set.
+    Until then, this endpoint surfaces a 503 with guidance so the UI
+    button is clickable and we don't ship a silent failure.
+    """
+    services_id = os.getenv("APPLE_SERVICES_ID")
+    if not services_id:
+        raise HTTPException(
+            status_code=503,
+            detail="Apple Sign-In not yet configured. Set APPLE_SERVICES_ID, APPLE_TEAM_ID, APPLE_KEY_ID, APPLE_PRIVATE_KEY.",
+        )
+    return {"redirect": f"https://appleid.apple.com/auth/authorize?client_id={services_id}&response_type=code&scope=email%20name&response_mode=form_post"}
+
+
+@router.post("/apple/callback")
+def apple_signin_callback(code: str = Form(...), id_token: str | None = Form(default=None)):
+    """Sign in with Apple — token-exchange callback.
+
+    Real implementation verifies the id_token JWT against Apple's JWKS,
+    upserts a User by Apple's stable `sub`, and returns our own JWT.
+    Scaffolded for Phase 1.5 native plumbing per phase1_5_appstore.md §2.
+    """
+    raise HTTPException(
+        status_code=501,
+        detail="Sign-In-with-Apple callback is scaffolded; full token verify ships with Phase 1.5.",
+    )
 
 
 @router.get("/me", response_model=UserResponseDTO)

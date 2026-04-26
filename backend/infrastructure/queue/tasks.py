@@ -543,7 +543,10 @@ def monthly_creator_payouts_task():
     logger.info("Monthly creator payout batch starting")
 
     with get_task_session() as session:
-        from ..repositories.models import CreatorWalletDB, PayoutDB
+        from ..repositories.models import (
+            CreatorWalletDB, PayoutDB, FollowDB, VideoDB,
+        )
+        from sqlalchemy import func as _func
 
         wallets = session.exec(
             select(CreatorWalletDB).where(
@@ -554,10 +557,30 @@ def monthly_creator_payouts_task():
         ).all()
 
         platform_fee_rate = 0.30  # 70/30 per Creator Fund 2.0
+        # Eligibility gate (PRD §4.3): >= 1k followers and >= 10k monthly views.
+        FOLLOWER_THRESHOLD = 1000
+        VIEW_THRESHOLD = 10_000
         processed = 0
         skipped = 0
         for wallet in wallets:
             try:
+                follower_count = session.exec(
+                    select(_func.count()).select_from(FollowDB).where(
+                        FollowDB.followee_id == wallet.user_id
+                    )
+                ).one() or 0
+                view_count = session.exec(
+                    select(_func.coalesce(_func.sum(VideoDB.views), 0)).where(
+                        VideoDB.creator_id == wallet.user_id
+                    )
+                ).one() or 0
+                if follower_count < FOLLOWER_THRESHOLD or view_count < VIEW_THRESHOLD:
+                    logger.info(
+                        "Wallet %s ineligible: %d followers, %d views",
+                        wallet.id, follower_count, view_count,
+                    )
+                    skipped += 1
+                    continue
                 fee = wallet.balance * platform_fee_rate
                 net = wallet.balance - fee
                 payout = PayoutDB(

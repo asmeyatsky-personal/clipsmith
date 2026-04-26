@@ -522,19 +522,32 @@ def get_traffic_breakdown(
     video_id: str,
     session: Session = Depends(get_session),
 ):
-    """Get traffic source breakdown for a video."""
-    # Placeholder - would integrate with analytics tracking
+    """Traffic source breakdown from TrafficSourceDB rows.
+
+    Aggregates the per-source counts our analytics middleware writes when
+    a video is viewed. Falls back to a zeroed envelope when no events
+    exist yet.
+    """
+    TrafficSourceDB = db_models.TrafficSourceDB
+    rows = session.exec(
+        select(TrafficSourceDB).where(TrafficSourceDB.video_id == video_id)
+    ).all()
+    breakdown = {"feed": 0, "search": 0, "profile": 0, "direct": 0, "external": 0, "hashtag": 0}
+    for r in rows:
+        src = (r.source_type or "direct").lower()
+        if src in breakdown:
+            breakdown[src] += 1
+        else:
+            breakdown["external"] += 1
+    total = sum(breakdown.values())
     return {
         "success": True,
         "video_id": video_id,
-        "traffic": {
-            "feed": 0,
-            "search": 0,
-            "profile": 0,
-            "direct": 0,
-            "external": 0,
-            "hashtag": 0,
-        },
+        "total_views_attributed": total,
+        "traffic": breakdown,
+        "shares": (
+            {k: round(v / total, 4) if total else 0 for k, v in breakdown.items()}
+        ),
     }
 
 
@@ -543,15 +556,50 @@ def get_retention_graph(
     video_id: str,
     session: Session = Depends(get_session),
 ):
-    """Get retention graph data for a video."""
-    # Placeholder - would integrate with video player analytics
+    """Retention curve from RetentionDataDB plus aggregate metrics.
+
+    Frontend renders this as a drop-off graph; the average % watched is
+    computed from per-second viewer counts when available, otherwise
+    falls back to the duration-weighted view count.
+    """
+    RetentionDataDB = db_models.RetentionDataDB
+    VideoDB_ = db_models.VideoDB
+
+    rows = session.exec(
+        select(RetentionDataDB)
+        .where(RetentionDataDB.video_id == video_id)
+        .order_by(RetentionDataDB.second_offset)
+    ).all()
+
+    video = session.get(VideoDB_, video_id)
+    duration = float(video.duration) if video and video.duration else 0.0
+    initial_viewers = max((r.viewer_count for r in rows), default=0)
+
+    points = [
+        {
+            "position": float(r.second_offset),
+            "viewers": int(r.viewer_count or 0),
+            "retention": (
+                round(int(r.viewer_count or 0) / initial_viewers, 4)
+                if initial_viewers else 0.0
+            ),
+        }
+        for r in rows
+    ]
+    avg_pct = (
+        sum(p["retention"] for p in points) / len(points)
+        if points else 0.0
+    )
+    avg_watch_time = avg_pct * duration
+
     return {
         "success": True,
         "video_id": video_id,
         "retention": {
-            "data_points": [],
-            "average_watch_time": 0,
-            "average_percentage": 0,
+            "data_points": points,
+            "average_watch_time": round(avg_watch_time, 2),
+            "average_percentage": round(avg_pct, 4),
+            "duration": duration,
         },
     }
 

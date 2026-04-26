@@ -27,6 +27,9 @@ class Video(Entity):
     likes: int = 0
     duration: float = 0.0
     is_premium: bool = False
+    visibility: str = "public"
+    allow_comment: str = "everyone"
+    allow_duet: str = "everyone"
 
 
 @dataclass(frozen=True, kw_only=True)

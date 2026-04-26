@@ -31,6 +31,13 @@ class VideoDB(SQLModel, table=True):
     thumbnail_url: Optional[str] = None
     status: str = Field(default="PENDING")
     is_premium: bool = Field(default=False, index=True)
+    # Per-video privacy controls (PRD §5):
+    #   visibility:    "public" (default), "followers", "circle", "private"
+    #   allow_comment: "everyone", "followers", "off"
+    #   allow_duet:    "everyone", "followers", "off"
+    visibility: str = Field(default="public", index=True)
+    allow_comment: str = Field(default="everyone")
+    allow_duet: str = Field(default="everyone")
     views: int = Field(default=0)
     likes: int = Field(default=0)
     duration: float = Field(default=0.0)

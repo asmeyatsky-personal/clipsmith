@@ -1,4 +1,8 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from slowapi import Limiter
+from slowapi.util import get_remote_address
+
+_limiter = Limiter(key_func=get_remote_address)
 from typing import Optional
 from sqlmodel import Session, select
 from datetime import datetime, UTC
@@ -6,6 +10,13 @@ import uuid
 from ..dependencies import db_models  # legacy ORM access
 from ..dependencies import get_session_for_router as get_session
 from ..dependencies import get_current_user
+from ...application.dtos.phase4_dto import (
+    CreateDuetRequest,
+    CreateLiveStreamRequest,
+    CreateWatchPartyRequest,
+    CreateCollabRequest,
+    SendMessageRequest,
+)
 
 CollaborativeVideoDB = db_models.CollaborativeVideoDB
 DirectMessageDB = db_models.DirectMessageDB
@@ -23,27 +34,19 @@ router = APIRouter(prefix="/api/social", tags=["social"])
 
 
 @router.post("/duets")
+@_limiter.limit("20/hour")
 def create_duet(
-    request_body: dict,
+    request: Request,
+    body: CreateDuetRequest,
     current_user=Depends(get_current_user),
     session: Session = Depends(get_session),
 ):
     """Create a duet with another video."""
-
-    original_video_id = request_body.get("original_video_id")
-    response_video_id = request_body.get("response_video_id")
-    duet_type = request_body.get("duet_type", "side_by_side")
-
-    if not original_video_id or not response_video_id:
-        raise HTTPException(
-            status_code=400, detail="Both original_video_id and response_video_id are required"
-        )
-
     duet = DuetDB(
         id=str(uuid.uuid4()),
-        original_video_id=original_video_id,
-        response_video_id=response_video_id,
-        duet_type=duet_type,
+        original_video_id=body.original_video_id,
+        response_video_id=body.response_video_id,
+        duet_type=body.duet_type,
         creator_id=current_user.id,
     )
     session.add(duet)
@@ -450,13 +453,15 @@ def join_watch_party(
 
 
 @router.post("/messages")
+@_limiter.limit("60/minute")
 def send_message(
-    request_body: dict,
+    request: Request,
+    body: SendMessageRequest,
     current_user=Depends(get_current_user),
     session: Session = Depends(get_session),
 ):
     """Send a direct message to another user."""
-
+    request_body = body.model_dump()
     receiver_id = request_body.get("receiver_id")
     content = request_body.get("content")
 

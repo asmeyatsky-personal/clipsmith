@@ -82,12 +82,21 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response.headers["X-Frame-Options"] = "DENY"
         response.headers["X-XSS-Protection"] = "1; mode=block"
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        # camera+mic must be allowed for first-party so the SPA's recording
+        # surface keeps working when co-hosted with the API; geolocation is
+        # not used anywhere in the product, keep it disabled.
         response.headers["Permissions-Policy"] = (
-            "camera=(), microphone=(), geolocation=()"
+            "camera=(self), microphone=(self), geolocation=()"
+        )
+        # Tight CSP for JSON API responses. The static SPA host (nginx) ships
+        # its own CSP for HTML pages — this one applies to /api responses
+        # only and stops content sniffing tricks.
+        response.headers["Content-Security-Policy"] = (
+            "default-src 'none'; frame-ancestors 'none'; base-uri 'none'"
         )
         if os.getenv("ENVIRONMENT") == "production":
             response.headers["Strict-Transport-Security"] = (
-                "max-age=31536000; includeSubDomains"
+                "max-age=31536000; includeSubDomains; preload"
             )
         return response
 

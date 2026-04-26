@@ -78,6 +78,26 @@ export function LoginForm() {
                 </button>
             </form>
 
+            <div className="mt-4 flex items-center gap-3">
+                <div className="h-px flex-1 bg-zinc-200 dark:bg-zinc-700" />
+                <span className="text-xs text-zinc-500">or</span>
+                <div className="h-px flex-1 bg-zinc-200 dark:bg-zinc-700" />
+            </div>
+
+            <button
+                type="button"
+                aria-label="Continue with Apple"
+                onClick={() => {
+                    window.location.href = '/auth/apple/start';
+                }}
+                className="mt-3 w-full py-3 rounded-xl bg-black text-white font-medium flex items-center justify-center gap-2 hover:bg-zinc-800 transition-all"
+            >
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true">
+                    <path d="M16.365 1.43c0 1.14-.46 2.21-1.21 2.97-.81.81-2.13 1.43-3.18 1.35-.13-1.13.45-2.3 1.18-3.04.81-.83 2.18-1.46 3.21-1.28zM20.94 17.78c-.61 1.36-.91 1.97-1.7 3.18-1.1 1.69-2.66 3.79-4.59 3.81-1.71.02-2.16-1.12-4.49-1.11-2.34.02-2.83 1.13-4.55 1.11-1.93-.02-3.4-1.91-4.51-3.6C-.36 17.7-.55 11.86 1.66 8.82c1.57-2.16 4.04-3.42 6.36-3.42 2.36 0 3.84 1.29 5.78 1.29 1.89 0 3.04-1.29 5.77-1.29 2.06 0 4.24 1.12 5.79 3.06-5.09 2.79-4.26 10.07-1.42 9.32z"/>
+                </svg>
+                Continue with Apple
+            </button>
+
             <p className="mt-6 text-center text-sm text-gray-500">
                 Don&apos;t have an account?{' '}
                 <Link href="/register" className="text-blue-600 hover:underline">

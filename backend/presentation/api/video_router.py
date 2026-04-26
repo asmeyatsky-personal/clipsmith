@@ -592,7 +592,9 @@ def list_chapters(video_id: str, session: Session = Depends(get_session)):
 
 
 @router.post("/{video_id}/scenes/detect", status_code=status.HTTP_202_ACCEPTED)
+@_limiter.limit("20/hour")
 def trigger_scene_detection(
+    request: Request,
     video_id: str,
     current_user: Annotated[dict, Depends(get_current_user)],
     repo: VideoRepositoryPort = Depends(get_video_repo),
@@ -611,7 +613,9 @@ def trigger_scene_detection(
 
 
 @router.post("/{video_id}/voice/enhance", status_code=status.HTTP_202_ACCEPTED)
+@_limiter.limit("20/hour")
 def trigger_voice_enhancement(
+    request: Request,
     video_id: str,
     current_user: Annotated[dict, Depends(get_current_user)],
     repo: VideoRepositoryPort = Depends(get_video_repo),
@@ -630,7 +634,9 @@ def trigger_voice_enhancement(
 
 
 @router.post("/{video_id}/chroma-key", status_code=status.HTTP_202_ACCEPTED)
+@_limiter.limit("20/hour")
 def trigger_chroma_key(
+    request: Request,
     video_id: str,
     current_user: Annotated[dict, Depends(get_current_user)],
     body: dict | None = None,
