@@ -585,3 +585,88 @@ def monthly_creator_payouts_task():
         logger.info(
             "Monthly payout batch done: %d processed, %d skipped", processed, skipped
         )
+
+
+def compose_duet_task(duet_id: str):
+    """Phase 4.1 — Server-side FFmpeg duet composition.
+
+    Reads original + response video URLs from DuetDB, downloads both,
+    composites them with FFmpeg's hstack/vstack filter, uploads the result
+    via the storage adapter, and stores the URL on the duet row in a new
+    `composed_url` column.
+
+    Layout depends on duet.duet_type:
+      - "side_by_side" → hstack (default, scaled to matching height)
+      - "react"        → small response PiP overlay top-right of original
+      - "stack"        → vstack
+    """
+    logger.info(f"Composing duet {duet_id}")
+    out_path: Optional[pathlib.Path] = None
+    a_path: Optional[pathlib.Path] = None
+    b_path: Optional[pathlib.Path] = None
+
+    with get_task_session() as session:
+        from ..repositories.models import DuetDB, VideoDB
+        duet = session.get(DuetDB, duet_id)
+        if not duet:
+            logger.warning(f"Duet {duet_id} not found")
+            return
+        original = session.get(VideoDB, duet.original_video_id)
+        response = session.get(VideoDB, duet.response_video_id)
+        if not original or not response or not original.url or not response.url:
+            logger.warning(f"Duet {duet_id} missing source videos")
+            return
+
+        backend_url = os.getenv("BACKEND_URL", "http://localhost:8000")
+        a_path = UPLOAD_DIR / f"{uuid4()}_duet_a.mp4"
+        b_path = UPLOAD_DIR / f"{uuid4()}_duet_b.mp4"
+        out_path = UPLOAD_DIR / f"{uuid4()}_duet_out.mp4"
+
+        try:
+            for url, dest in (
+                (f"{backend_url}{original.url}", a_path),
+                (f"{backend_url}{response.url}", b_path),
+            ):
+                r = requests.get(url, stream=True, timeout=30)
+                r.raise_for_status()
+                with open(dest, "wb") as f:
+                    for chunk in r.iter_content(chunk_size=8192):
+                        f.write(chunk)
+
+            a = ffmpeg.input(str(a_path))
+            b = ffmpeg.input(str(b_path))
+            if duet.duet_type == "stack":
+                a_s = a.video.filter("scale", 720, -2)
+                b_s = b.video.filter("scale", 720, -2)
+                v = ffmpeg.filter([a_s, b_s], "vstack", inputs=2)
+            elif duet.duet_type == "react":
+                main = a.video.filter("scale", 1280, -2)
+                pip = b.video.filter("scale", 320, -2)
+                v = ffmpeg.overlay(main, pip, x="W-w-20", y=20)
+            else:  # side_by_side
+                a_s = a.video.filter("scale", -2, 720)
+                b_s = b.video.filter("scale", -2, 720)
+                v = ffmpeg.filter([a_s, b_s], "hstack", inputs=2)
+
+            audio = ffmpeg.filter([a.audio, b.audio], "amix", inputs=2, duration="shortest")
+            (
+                ffmpeg.output(v, audio, str(out_path), vcodec="libx264", acodec="aac", preset="fast")
+                .overwrite_output()
+                .run(capture_stdout=True, capture_stderr=True)
+            )
+
+            with open(out_path, "rb") as src:
+                composed_url = storage_adapter.save(f"duet_{duet_id}.mp4", src)
+            duet.composed_url = composed_url
+            session.add(duet)
+            session.commit()
+            logger.info(f"Duet {duet_id} composed → {composed_url}")
+        except Exception as e:
+            logger.exception(f"Duet composition failed {duet_id}: {e}")
+        finally:
+            for p in (a_path, b_path, out_path):
+                if p and p.exists():
+                    try:
+                        os.remove(p)
+                    except OSError:
+                        pass

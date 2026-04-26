@@ -49,6 +49,12 @@ def create_duet(
     session.add(duet)
     session.commit()
 
+    try:
+        from ..dependencies import compose_duet_task, get_video_queue
+        get_video_queue().enqueue(compose_duet_task, duet.id)
+    except Exception:
+        pass  # Compose can be retried; row is persisted
+
     return {
         "success": True,
         "duet": {
@@ -57,6 +63,7 @@ def create_duet(
             "response_video_id": duet.response_video_id,
             "duet_type": duet.duet_type,
             "creator_id": duet.creator_id,
+            "composed_url": duet.composed_url,
         },
     }
 
@@ -203,6 +210,11 @@ def start_live_stream(
     session.add(stream)
     session.commit()
 
+    from ..dependencies import get_live_stream_adapter
+    sfu = get_live_stream_adapter()
+    sfu.create_room(stream.id)
+    host_token = sfu.issue_join_token(stream.id, current_user.id, role="host")
+
     return {
         "success": True,
         "live_stream": {
@@ -211,8 +223,27 @@ def start_live_stream(
             "status": stream.status,
             "creator_id": stream.creator_id,
             "scheduled_for": stream.scheduled_for,
+            "host_token": host_token,
         },
     }
+
+
+@router.post("/live-streams/{stream_id}/join-token")
+def issue_live_stream_join_token(
+    stream_id: str,
+    current_user=Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    """Issue a viewer/guest join token for a live stream."""
+    stream = session.get(LiveStreamDB, stream_id)
+    if not stream:
+        raise HTTPException(status_code=404, detail="Live stream not found")
+    if stream.status not in {"scheduled", "live"}:
+        raise HTTPException(status_code=400, detail="Stream not joinable")
+    role = "host" if stream.creator_id == current_user.id else "viewer"
+    from ..dependencies import get_live_stream_adapter
+    token = get_live_stream_adapter().issue_join_token(stream_id, current_user.id, role)
+    return {"success": True, "token": token, "role": role, "stream_id": stream_id}
 
 
 @router.post("/live-streams/{stream_id}/end")
@@ -237,6 +268,9 @@ def end_live_stream(
     stream.ended_at = datetime.now(UTC)
     session.add(stream)
     session.commit()
+
+    from ..dependencies import get_live_stream_adapter
+    get_live_stream_adapter().end_room(stream_id)
 
     return {"success": True, "message": "Live stream ended"}
 

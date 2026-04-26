@@ -77,13 +77,14 @@ from ..infrastructure.repositories.sqlite_video_editor_repo import (
 )
 from ..infrastructure.queue import get_video_queue as _raw_get_video_queue
 from ..infrastructure.queue.tasks import (
+    compose_duet_task as _raw_compose_duet_task,
     detect_scenes_task as _raw_detect_scenes_task,
     enhance_voice_task as _raw_enhance_voice_task,
     generate_captions_task as _raw_generate_captions_task,
     process_video_task as _raw_process_video_task,
 )
 from ..infrastructure.queue.video_queue_adapter import RQVideoQueueAdapter
-from ..infrastructure.repositories.database import get_session
+from ..infrastructure.repositories.database import get_session, get_task_session
 from ..infrastructure.repositories.sqlite_auth_security_repo import (
     SQLitePasswordResetRepository,
     SQLiteTwoFactorRepository,
@@ -116,6 +117,10 @@ from ..infrastructure.repositories.sqlite_user_repo import SQLiteUserRepository
 from ..infrastructure.repositories.sqlite_video_repo import SQLiteVideoRepository
 from ..infrastructure.security.jwt_adapter import JWTAdapter
 from ..infrastructure.security.security_adapter import PasswordHelper
+from ..infrastructure.adapters.live_stream_placeholder import (
+    PlaceholderLiveStreamAdapter,
+)
+from ..domain.ports.live_stream_port import LiveStreamPort
 
 
 # --- Repository providers ---
@@ -268,6 +273,14 @@ generate_captions_task = _raw_generate_captions_task
 process_video_task = _raw_process_video_task
 detect_scenes_task = _raw_detect_scenes_task
 enhance_voice_task = _raw_enhance_voice_task
+compose_duet_task = _raw_compose_duet_task
+
+
+_live_stream_adapter: LiveStreamPort = PlaceholderLiveStreamAdapter()
+
+
+def get_live_stream_adapter() -> LiveStreamPort:
+    return _live_stream_adapter
 
 # Legacy class re-exports for routers with inline `SQLiteXRepo(session)` /
 # `JWTAdapter.verify_token(...)` calls. To be removed as routers move to

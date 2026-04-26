@@ -22,6 +22,7 @@ from .presentation.api.course_router import router as course_router
 from .presentation.api.compliance_router import router as compliance_router
 from .presentation.api.push_router import router as push_router
 from .presentation.api.two_factor_router import router as two_factor_router
+from .presentation.api.watchparty_ws_router import router as watchparty_ws_router
 from .presentation.middleware.monitoring_middleware import (
     MonitoringMiddleware,
     HealthCheckMiddleware,
@@ -136,6 +137,7 @@ app.include_router(course_router)
 app.include_router(compliance_router)
 app.include_router(two_factor_router)
 app.include_router(push_router)
+app.include_router(watchparty_ws_router)
 
 
 @app.get("/")

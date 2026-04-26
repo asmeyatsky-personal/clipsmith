@@ -78,6 +78,7 @@ class DuetDB(SQLModel, table=True):
     response_video_id: str = Field(index=True)
     creator_id: str = Field(index=True)
     duet_type: str = Field(index=True)
+    composed_url: Optional[str] = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
