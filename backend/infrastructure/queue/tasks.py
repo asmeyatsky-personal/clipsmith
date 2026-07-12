@@ -528,6 +528,180 @@ def enhance_voice_task(video_id: str):
                         pass
 
 
+def _write_project_export_state(session, project_id: str, **fields) -> None:
+    """Persist editor export progress on VideoProjectDB.extra_metadata.
+
+    Export state lives under the "export" key of the project's JSON
+    extra_metadata blob (no dedicated table/migration needed). The router's
+    /export and /export-status endpoints read/write the same shape.
+    """
+    from ..repositories.models import VideoProjectDB
+
+    project = session.get(VideoProjectDB, project_id)
+    if not project:
+        return
+    try:
+        meta = json.loads(project.extra_metadata) if project.extra_metadata else {}
+        if not isinstance(meta, dict):
+            meta = {}
+    except (TypeError, ValueError):
+        meta = {}
+    export = meta.get("export") or {}
+    export.update(fields)
+    meta["export"] = export
+    project.extra_metadata = json.dumps(meta)
+    session.add(project)
+    session.commit()
+
+
+def export_project_task(project_id: str, quality: str = "1080p"):
+    """Render an editor project's timeline into a single MP4 and store it.
+
+    Assembles every video clip on the project's timeline (VideoEditorTrackDB
+    ordered by start_time, resolved to its VideoEditorAssetDB source), scales
+    each to the target resolution, concatenates them, uploads the result via the
+    storage adapter, and records the URL in the project's export state. This is
+    the real render behind the editor's Export button (previously a stub).
+    """
+    from ..repositories.models import VideoEditorTrackDB, VideoEditorAssetDB
+
+    logger.info(f"Starting project export {project_id} quality={quality}")
+    res = VIDEO_RESOLUTIONS.get(quality, VIDEO_RESOLUTIONS["1080p"])
+    width, height = res["width"], res["height"]
+    backend_url = os.getenv("BACKEND_URL", "http://localhost:8000")
+    tmp_paths: List[pathlib.Path] = []
+    out_path: Optional[pathlib.Path] = None
+
+    with get_task_session() as session:
+        try:
+            _write_project_export_state(
+                session, project_id, status="processing", error=None
+            )
+
+            from sqlmodel import select as _select
+
+            tracks = session.exec(
+                _select(VideoEditorTrackDB)
+                .where(VideoEditorTrackDB.project_id == project_id)
+                .order_by(VideoEditorTrackDB.start_time.asc())
+            ).all()
+
+            # Resolve each timeline track to a downloadable video source.
+            clips: List[str] = []
+            for track in tracks:
+                asset = session.get(VideoEditorAssetDB, track.asset_id)
+                if not asset:
+                    continue
+                url = asset.storage_url or asset.original_url
+                if not url:
+                    continue
+                # Only video sources contribute frames to the render.
+                if asset.type and asset.type not in ("video", "clip"):
+                    continue
+                full = url if url.startswith("http") else f"{backend_url}{url}"
+                clips.append(full)
+
+            if not clips:
+                _write_project_export_state(
+                    session,
+                    project_id,
+                    status="failed",
+                    error="No video clips on the timeline to export.",
+                )
+                logger.warning(f"Export {project_id}: no clips")
+                return
+
+            # Download each clip locally.
+            for i, url in enumerate(clips):
+                dest = UPLOAD_DIR / f"{uuid4()}_export_src_{i}.mp4"
+                tmp_paths.append(dest)
+                r = requests.get(url, stream=True, timeout=60)
+                r.raise_for_status()
+                with open(dest, "wb") as f:
+                    for chunk in r.iter_content(chunk_size=8192):
+                        f.write(chunk)
+
+            # Normalise every clip to the target frame (scale + pad to keep
+            # aspect ratio), a common fps and stereo audio, then concat. A
+            # silent track is synthesised for clips that carry no audio so the
+            # concat's audio stream count stays consistent.
+            out_path = UPLOAD_DIR / f"{uuid4()}_export_out.mp4"
+            streams = []
+            for path in tmp_paths:
+                meta = get_video_metadata(str(path))
+                inp = ffmpeg.input(str(path))
+                v = (
+                    inp.video.filter(
+                        "scale", width, height,
+                        force_original_aspect_ratio="decrease",
+                    )
+                    .filter("pad", width, height, "(ow-iw)/2", "(oh-ih)/2")
+                    .filter("setsar", "1")
+                    .filter("fps", fps=30)
+                )
+                if meta.get("audio_codec"):
+                    a = inp.audio.filter("aformat", sample_rates="44100", channel_layouts="stereo")
+                else:
+                    a = ffmpeg.input(
+                        "anullsrc=channel_layout=stereo:sample_rate=44100",
+                        f="lavfi", t=meta.get("duration", 1) or 1,
+                    ).audio
+                streams.extend([v, a])
+
+            joined = ffmpeg.concat(*streams, v=1, a=1, n=len(tmp_paths)).node
+            (
+                ffmpeg.output(
+                    joined[0], joined[1], str(out_path),
+                    vcodec="libx264", acodec="aac", preset="veryfast",
+                    movflags="faststart", pix_fmt="yuv420p",
+                )
+                .overwrite_output()
+                .run(capture_stdout=True, capture_stderr=True)
+            )
+
+            remote_key = f"exports/{project_id}.mp4"
+            with open(out_path, "rb") as fp:
+                storage_adapter.save(remote_key, fp)
+            export_url = storage_adapter.get_url(remote_key)
+
+            duration = sum(
+                (get_video_metadata(str(p)).get("duration", 0) or 0) for p in tmp_paths
+            )
+            _write_project_export_state(
+                session,
+                project_id,
+                status="completed",
+                url=export_url,
+                quality=quality,
+                error=None,
+            )
+            # Reflect the rendered duration back on the project.
+            from ..repositories.models import VideoProjectDB
+
+            proj = session.get(VideoProjectDB, project_id)
+            if proj:
+                proj.duration = duration
+                session.add(proj)
+                session.commit()
+            logger.info(f"Export {project_id} complete → {export_url}")
+
+        except Exception as e:
+            logger.exception(f"Export failed for project {project_id}: {e}")
+            try:
+                _write_project_export_state(
+                    session, project_id, status="failed", error=str(e)[:500]
+                )
+            except Exception:
+                pass
+        finally:
+            for p in tmp_paths + ([out_path] if out_path else []):
+                if p and p.exists():
+                    try:
+                        os.remove(p)
+                    except OSError:
+                        pass
+
+
 def monthly_creator_payouts_task():
     """Phase 3.3 — Creator Fund monthly payout batch.
 

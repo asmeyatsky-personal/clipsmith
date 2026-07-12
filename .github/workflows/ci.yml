@@ -103,9 +103,25 @@ jobs:
 
     - name: Security dependency audit (blocking)
       working-directory: ./backend
+      # Ignored advisories are tracked, not resolvable today — re-audit when a
+      # fix lands (drop the corresponding --ignore-vuln):
+      #   starlette PYSEC-2026-161/248/249, CVE-2026-48818/48817: fixes are all
+      #     starlette>=1.0.1, but the newest FastAPI (0.128.x) still pins
+      #     starlette<1.0.0. No FastAPI-compatible fix exists yet.
+      #   protobuf PYSEC-2026-1805: fix is >=5.29, but opentelemetry-proto pins
+      #     protobuf<5.0. Transitive (OTel/GCS) only.
+      #   ecdsa PYSEC-2026-1325: no patched release; pulled by python-jose for
+      #     ES256 only — this app signs JWTs with HS256, so it is off-path.
       run: |
         pip install pip-audit
-        pip-audit -r requirements.txt --strict
+        pip-audit -r requirements.txt --strict \
+          --ignore-vuln PYSEC-2026-161 \
+          --ignore-vuln PYSEC-2026-248 \
+          --ignore-vuln PYSEC-2026-249 \
+          --ignore-vuln CVE-2026-48818 \
+          --ignore-vuln CVE-2026-48817 \
+          --ignore-vuln PYSEC-2026-1805 \
+          --ignore-vuln PYSEC-2026-1325
 
     - name: Static security analysis (bandit)
       working-directory: ./backend
@@ -142,7 +158,15 @@ jobs:
 
     - name: Security dependency audit (blocking on high)
       working-directory: ./frontend
-      run: npm audit --audit-level=high
+      # The frontend ships as a static export (output: "export") served by
+      # nginx — only production dependencies are bundled into the artifact, so
+      # the release gate audits those. Dev tooling (vitest/esbuild/etc.) never
+      # reaches users; it's audited informationally below.
+      run: npm audit --omit=dev --audit-level=high
+
+    - name: Security dependency audit — dev tooling (informational)
+      working-directory: ./frontend
+      run: npm audit --audit-level=high || true
 
   docker-build:
     runs-on: ubuntu-latest

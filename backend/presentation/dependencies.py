@@ -82,6 +82,7 @@ from ..infrastructure.queue.tasks import (
     daily_analytics_export_task as _raw_daily_analytics_export_task,
     detect_scenes_task as _raw_detect_scenes_task,
     enhance_voice_task as _raw_enhance_voice_task,
+    export_project_task as _raw_export_project_task,
     generate_captions_task as _raw_generate_captions_task,
     process_video_task as _raw_process_video_task,
 )
@@ -273,6 +274,7 @@ def get_video_processing_queue():
 # Re-exported for routers that still need direct task references.
 generate_captions_task = _raw_generate_captions_task
 process_video_task = _raw_process_video_task
+export_project_task = _raw_export_project_task
 detect_scenes_task = _raw_detect_scenes_task
 enhance_voice_task = _raw_enhance_voice_task
 compose_duet_task = _raw_compose_duet_task

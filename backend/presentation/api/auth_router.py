@@ -5,6 +5,7 @@ from fastapi.security import OAuth2PasswordBearer
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 
+from ...infrastructure.config import get_settings
 from ...application.dtos.auth_dto import (
     LoginRequestDTO,
     LoginResponseDTO,
@@ -113,12 +114,13 @@ def login(
             detail="Incorrect username or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
+    _settings = get_settings()
     response.set_cookie(
         key="access_token",
         value=result.access_token,
         httponly=True,
-        secure=True,
-        samesite="lax",
+        secure=_settings.cookie_secure,
+        samesite=_settings.cookie_samesite,
         max_age=30 * 60,
     )
     return result
@@ -126,7 +128,15 @@ def login(
 
 @router.post("/logout")
 def logout(response: Response):
-    response.delete_cookie(key="access_token")
+    _settings = get_settings()
+    # Match the attributes used when setting the cookie so browsers actually
+    # clear it (SameSite=None cookies won't be removed by a bare delete_cookie).
+    response.delete_cookie(
+        key="access_token",
+        httponly=True,
+        secure=_settings.cookie_secure,
+        samesite=_settings.cookie_samesite,
+    )
     return {"message": "Successfully logged out"}
 
 

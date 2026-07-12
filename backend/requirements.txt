@@ -13,7 +13,7 @@ click-didyoumean==0.3.1
 click-plugins==1.1.1.2
 click-repl==0.3.0
 croniter==6.0.0
-cryptography==46.0.7
+cryptography==48.0.1
 dnspython==2.8.0
 ecdsa==0.19.2
 email-validator==2.3.0
@@ -23,7 +23,7 @@ ffmpeg-python==0.2.0
 future==1.0.0
 greenlet==3.3.0
 h11==0.16.0
-idna==3.11
+idna==3.15
 kombu==5.6.1
 packaging==25.0
 passlib==1.7.4
@@ -35,7 +35,7 @@ pydantic-settings==2.10.1
 pydantic_core==2.41.5
 python-dateutil==2.9.0.post0
 python-jose[cryptography]==3.5.0
-python-multipart==0.0.26
+python-multipart==0.0.31
 pytz==2025.2
 redis==6.4.0
 rq==2.6.1
@@ -63,7 +63,7 @@ structlog==24.4.0
 python-json-logger==2.0.7
 prometheus-client==0.21.0
 psutil==6.1.0
-bleach==6.2.0
+bleach==6.4.0
 qrcode[pil]==7.4.2
 requests==2.33.0
 stripe==10.12.0

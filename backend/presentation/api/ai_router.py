@@ -1,4 +1,5 @@
 import json
+import os
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlmodel import Session, select
@@ -15,6 +16,21 @@ AIVoiceOverDB = db_models.AIVoiceOverDB
 VideoProjectDB = db_models.VideoProjectDB
 
 router = APIRouter(prefix="/api/ai", tags=["ai_tools"])
+
+
+def _require_ai_generation_enabled() -> None:
+    """Guard the generative-AI endpoints (text-to-video, voice-over).
+
+    No provider/worker processes these jobs yet, so accepting a request would
+    create a row that stays `pending` forever. Until a generation backend is
+    wired, respond 501 instead of silently queueing dead-end work. Flip
+    AI_GENERATION_ENABLED=true once a provider + worker task exist.
+    """
+    if os.getenv("AI_GENERATION_ENABLED", "").lower() not in ("1", "true", "yes"):
+        raise HTTPException(
+            status_code=501,
+            detail="AI generation is not available yet.",
+        )
 
 
 def get_optional_current_user(
@@ -265,6 +281,7 @@ async def generate_ai_video(
     """Request AI video generation."""
     if not current_user:
         raise HTTPException(status_code=401, detail="Authentication required")
+    _require_ai_generation_enabled()
 
     body = await request.json()
 
@@ -327,6 +344,7 @@ async def generate_ai_voiceover(
     """Request AI voice-over generation."""
     if not current_user:
         raise HTTPException(status_code=401, detail="Authentication required")
+    _require_ai_generation_enabled()
 
     body = await request.json()
 

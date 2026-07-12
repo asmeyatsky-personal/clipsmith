@@ -1,7 +1,9 @@
+import functools
 import os
 from typing import Any, Dict, Optional
 
 import stripe
+from anyio import to_thread
 
 from ...domain.ports.payment_repository_port import StripeServicePort
 from ...application.utils.resilience import stripe_breaker
@@ -9,6 +11,17 @@ from ...application.utils.resilience import stripe_breaker
 # Bound network calls to 10s; Stripe defaults are unbounded for some ops.
 stripe.api_request_timeout = 10
 stripe.max_network_retries = 2
+
+
+async def _stripe_call(func, *args, **kwargs):
+    """Run a blocking Stripe SDK call in a worker thread.
+
+    The Stripe SDK is synchronous (requests-based) and, with retries, a single
+    call can block for tens of seconds. These methods are awaited from FastAPI's
+    async routes, so calling the SDK directly would stall the whole event loop.
+    Offloading to a thread keeps the loop free to serve other requests.
+    """
+    return await to_thread.run_sync(functools.partial(func, *args, **kwargs))
 
 
 class StripeService(StripeServicePort):
@@ -25,7 +38,8 @@ class StripeService(StripeServicePort):
             # Convert amount to cents
             amount_cents = int(amount * 100)
             
-            intent = stripe.PaymentIntent.create(
+            intent = await _stripe_call(
+                stripe.PaymentIntent.create,
                 amount=amount_cents,
                 currency=currency.lower(),
                 metadata=metadata or {},
@@ -53,7 +67,7 @@ class StripeService(StripeServicePort):
     async def confirm_payment(self, payment_intent_id: str) -> Dict[str, Any]:
         """Confirm a payment intent."""
         try:
-            intent = stripe.PaymentIntent.confirm(payment_intent_id)
+            intent = await _stripe_call(stripe.PaymentIntent.confirm, payment_intent_id)
             
             return {
                 "success": True,
@@ -79,7 +93,7 @@ class StripeService(StripeServicePort):
             if amount:
                 refund_params["amount"] = int(amount * 100)
             
-            refund = stripe.Refund.create(**refund_params)
+            refund = await _stripe_call(stripe.Refund.create, **refund_params)
             
             return {
                 "success": True,
@@ -100,7 +114,8 @@ class StripeService(StripeServicePort):
     async def create_connect_account(self, user_id: str, email: str) -> Dict[str, Any]:
         """Create a Stripe Connect account for creator."""
         try:
-            account = stripe.Account.create(
+            account = await _stripe_call(
+                stripe.Account.create,
                 type="express",
                 country="US",
                 email=email,
@@ -128,7 +143,8 @@ class StripeService(StripeServicePort):
                                 return_url: str) -> Dict[str, Any]:
         """Create account link for Stripe Connect onboarding."""
         try:
-            account_link = stripe.AccountLink.create(
+            account_link = await _stripe_call(
+                stripe.AccountLink.create,
                 account=account_id,
                 refresh_url=refresh_url,
                 return_url=return_url,
@@ -151,7 +167,7 @@ class StripeService(StripeServicePort):
     async def get_connect_account(self, account_id: str) -> Dict[str, Any]:
         """Get Stripe Connect account details."""
         try:
-            account = stripe.Account.retrieve(account_id)
+            account = await _stripe_call(stripe.Account.retrieve, account_id)
             
             return {
                 "success": True,
@@ -169,7 +185,7 @@ class StripeService(StripeServicePort):
                                   updates: Dict[str, Any]) -> Dict[str, Any]:
         """Update Stripe Connect account."""
         try:
-            account = stripe.Account.modify(account_id, **updates)
+            account = await _stripe_call(stripe.Account.modify, account_id, **updates)
             
             return {
                 "success": True,
@@ -190,7 +206,8 @@ class StripeService(StripeServicePort):
         try:
             amount_cents = int(amount * 100)
             
-            payout = stripe.Payout.create(
+            payout = await _stripe_call(
+                stripe.Payout.create,
                 amount=amount_cents,
                 currency=currency.lower(),
                 destination=destination,
@@ -216,7 +233,7 @@ class StripeService(StripeServicePort):
     async def get_payout(self, payout_id: str) -> Dict[str, Any]:
         """Get payout details."""
         try:
-            payout = stripe.Payout.retrieve(payout_id)
+            payout = await _stripe_call(stripe.Payout.retrieve, payout_id)
             
             return {
                 "success": True,
@@ -235,7 +252,8 @@ class StripeService(StripeServicePort):
                                 metadata: Optional[Dict[str, str]] = None) -> Dict[str, Any]:
         """Create a subscription."""
         try:
-            subscription = stripe.Subscription.create(
+            subscription = await _stripe_call(
+                stripe.Subscription.create,
                 customer=customer_id,
                 items=[{"price": price_id}],
                 metadata=metadata or {},
@@ -262,7 +280,7 @@ class StripeService(StripeServicePort):
     async def cancel_subscription(self, subscription_id: str) -> Dict[str, Any]:
         """Cancel a subscription."""
         try:
-            subscription = stripe.Subscription.delete(subscription_id)
+            subscription = await _stripe_call(stripe.Subscription.delete, subscription_id)
             
             return {
                 "success": True,
@@ -299,7 +317,7 @@ class StripeService(StripeServicePort):
                     "description": "Monthly subscription to creator content"
                 }
             
-            price = stripe.Price.create(**price_params)
+            price = await _stripe_call(stripe.Price.create, **price_params)
             
             return {
                 "success": True,
@@ -319,7 +337,8 @@ class StripeService(StripeServicePort):
     async def create_customer(self, email: str, metadata: Optional[Dict[str, str]] = None) -> Dict[str, Any]:
         """Create a Stripe customer."""
         try:
-            customer = stripe.Customer.create(
+            customer = await _stripe_call(
+                stripe.Customer.create,
                 email=email,
                 metadata=metadata or {}
             )

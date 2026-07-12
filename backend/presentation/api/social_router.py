@@ -6,6 +6,7 @@ _limiter = Limiter(key_func=get_remote_address)
 from typing import Optional
 from sqlmodel import Session, select
 from datetime import datetime, UTC
+import os
 import uuid
 from ..dependencies import db_models  # legacy ORM access
 from ..dependencies import get_session_for_router as get_session
@@ -187,6 +188,15 @@ def start_live_stream(
     session: Session = Depends(get_session),
 ):
     """Start a new live stream."""
+
+    # Live streaming has no real media server yet (the SFU is a placeholder that
+    # only issues join tokens — no video actually flows). Refuse to start a
+    # stream until a real backend is wired, rather than opening a room nobody can
+    # broadcast to. Flip LIVE_STREAMING_ENABLED=true when an SFU is in place.
+    if os.getenv("LIVE_STREAMING_ENABLED", "").lower() not in ("1", "true", "yes"):
+        raise HTTPException(
+            status_code=501, detail="Live streaming is not available yet."
+        )
 
     title = request_body.get("title")
     description = request_body.get("description", "")

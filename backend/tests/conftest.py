@@ -1,5 +1,10 @@
 import os
 os.environ.setdefault("JWT_SECRET_KEY", "test-secret-key-for-tests-only-not-production")
+# These features are gated off by default in production (no worker/SFU yet), but
+# the tests still exercise the underlying request/persistence logic, so enable
+# the flags for the test session.
+os.environ.setdefault("AI_GENERATION_ENABLED", "true")
+os.environ.setdefault("LIVE_STREAMING_ENABLED", "true")
 
 import pytest
 from sqlmodel import Session, SQLModel, create_engine

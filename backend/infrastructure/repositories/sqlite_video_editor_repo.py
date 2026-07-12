@@ -1,3 +1,4 @@
+import json
 from typing import List, Optional
 from sqlmodel import Session, select, func, and_, desc
 from ...domain.entities.video_editor import (
@@ -19,6 +20,31 @@ from .models import (
 )
 
 
+def _json_or_none(value):
+    """DB stores settings/metadata as JSON strings; the domain wants dicts."""
+    if value is None:
+        return None
+    if isinstance(value, (dict, list)):
+        return value
+    try:
+        return json.loads(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _project_to_domain(db: VideoProjectDB) -> VideoProject:
+    """Map a VideoProjectDB row to the VideoProject domain entity.
+
+    The DB column is `extra_metadata` while the domain field is `metadata`, and
+    settings/metadata are persisted as JSON strings — so a blind
+    ``VideoProject(**db.model_dump())`` raises. This bridges the two shapes.
+    """
+    data = db.model_dump()
+    data["metadata"] = _json_or_none(data.pop("extra_metadata", None))
+    data["settings"] = _json_or_none(data.get("settings"))
+    return VideoProject(**data)
+
+
 class SQLiteVideoEditorRepository(VideoEditorRepositoryPort):
     def __init__(self, session: Session):
         self.session = session
@@ -28,12 +54,12 @@ class SQLiteVideoEditorRepository(VideoEditorRepositoryPort):
         project_db = self.session.merge(project_db)
         self.session.commit()
         self.session.refresh(project_db)
-        return VideoProject(**project_db.model_dump())
+        return _project_to_domain(project_db)
 
     def get_project_by_id(self, project_id: str) -> Optional[VideoProject]:
         project_db = self.session.get(VideoProjectDB, project_id)
         if project_db:
-            return VideoProject(**project_db.model_dump())
+            return _project_to_domain(project_db)
         return None
 
     def get_user_projects(
@@ -49,7 +75,7 @@ class SQLiteVideoEditorRepository(VideoEditorRepositoryPort):
         query = query.order_by(VideoProjectDB.updated_at.desc()).limit(limit)
 
         results = self.session.exec(query).all()
-        return [VideoProject(**project.model_dump()) for project in results]
+        return [_project_to_domain(project) for project in results]
 
     def get_all_projects(self, limit: int = 50) -> List[VideoProject]:
         """Get all video editor projects."""
@@ -60,7 +86,7 @@ class SQLiteVideoEditorRepository(VideoEditorRepositoryPort):
         )
 
         results = self.session.exec(query).all()
-        return [VideoProject(**project.model_dump()) for project in results]
+        return [_project_to_domain(project) for project in results]
 
     def delete_project(self, project_id: str) -> bool:
         """Delete a video editor project."""

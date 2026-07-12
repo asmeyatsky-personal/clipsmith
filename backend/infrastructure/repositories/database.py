@@ -138,8 +138,15 @@ def create_db_and_tables():
     # Tables added later via Alembic that aren't in the legacy import block —
     # ensure they exist on metadata so create_all picks them up in dev/test.
     from ..adapters.audit_log import AuditLogDB  # noqa: F401
+    from ..config import get_settings
 
-    SQLModel.metadata.create_all(engine)
+    # In production the schema is owned by Alembic migrations (run as the Fly
+    # `release_command`, `alembic upgrade head`). Calling create_all there would
+    # mask missing migrations and let model/schema drift go unnoticed, so we skip
+    # it and let migrations be the single source of truth. Reference-data seeds
+    # below are idempotent and required in every environment.
+    if not get_settings().is_production():
+        SQLModel.metadata.create_all(engine)
     _seed_data()
     # Phase 2.3: curated template starter set (idempotent)
     try:

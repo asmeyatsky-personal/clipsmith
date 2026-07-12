@@ -23,28 +23,10 @@ VideoEditorKeyframeDB = db_models.VideoEditorKeyframeDB
 VideoProjectDB = db_models.VideoProjectDB
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
-
-def get_current_user(
-    request: Request,
-):
-    token = request.cookies.get("access_token")
-    if not token:
-        token = request.headers.get("Authorization", "").replace("Bearer ", "")
-
-    if not token:
-        raise HTTPException(
-            status_code=401,
-            detail="Not authenticated",
-        )
-
-    payload = JWTAdapter.verify_token(token)
-    if not payload:
-        raise HTTPException(
-            status_code=401,
-            detail="Invalid authentication credentials",
-        )
-    return {"id": payload.get("user_id"), "email": payload.get("sub")}
-
+# NOTE: get_current_user is imported from ..dependencies (above). A previous
+# local override here returned a plain dict, but every endpoint in this router
+# accesses attributes (current_user.id / .email), so the whole editor API
+# 500'd. The shared dependency returns the User entity with those attributes.
 
 router = APIRouter(prefix="/api/editor", tags=["video_editor"])
 
@@ -527,6 +509,17 @@ async def publish_project(
     }
 
 
+def _read_export_state(project) -> dict:
+    """Read the export block from a project's extra_metadata JSON blob."""
+    try:
+        meta = json.loads(project.extra_metadata) if project.extra_metadata else {}
+        if isinstance(meta, dict) and isinstance(meta.get("export"), dict):
+            return meta["export"]
+    except (TypeError, ValueError):
+        pass
+    return {}
+
+
 @router.post("/projects/{project_id}/export")
 async def export_project(
     project_id: str,
@@ -535,25 +528,46 @@ async def export_project(
     service: VideoEditorService = Depends(get_video_editor_service),
     session: Session = Depends(get_session),
 ):
-    """Export a project (placeholder - actual rendering would be async)."""
+    """Kick off a real render of the project's timeline into an MP4.
+
+    Enqueues export_project_task, which composites the timeline clips with
+    ffmpeg and uploads the result. Progress is tracked in the project's
+    extra_metadata and readable via /export-status.
+    """
 
     project = session.get(VideoProjectDB, project_id)
     if not project or project.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Access denied")
 
     body = await request.json()
-    format = body.get("format", "mp4")
     quality = body.get("quality", "1080p")
+    if quality not in ("360p", "720p", "1080p", "2160p"):
+        raise HTTPException(status_code=400, detail="Unsupported quality")
+
+    # Mark processing before enqueue so a poll between enqueue and worker
+    # pickup reports the right state.
+    try:
+        meta = json.loads(project.extra_metadata) if project.extra_metadata else {}
+        if not isinstance(meta, dict):
+            meta = {}
+    except (TypeError, ValueError):
+        meta = {}
+    meta["export"] = {"status": "processing", "quality": quality, "url": None, "error": None}
+    project.extra_metadata = json.dumps(meta)
+    session.add(project)
+    session.commit()
+
+    from ..dependencies import get_video_processing_queue, export_project_task
+
+    get_video_processing_queue().enqueue(
+        export_project_task, project_id, quality, job_timeout=3600
+    )
 
     return {
         "success": True,
         "message": "Export started",
         "project_id": project_id,
-        "export_settings": {
-            "format": format,
-            "quality": quality,
-            "status": "processing",
-        },
+        "export_settings": {"format": "mp4", "quality": quality, "status": "processing"},
     }
 
 
@@ -569,12 +583,12 @@ async def get_export_status(
     if not project or project.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Access denied")
 
+    export = _read_export_state(project)
     return {
         "project_id": project_id,
-        "export_status": "completed"
-        if project.status == "published"
-        else "not_started",
-        "video_url": project.thumbnail_url,
+        "export_status": export.get("status", "not_started"),
+        "video_url": export.get("url"),
+        "error": export.get("error"),
     }
 
 

@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import Image from 'next/image';
 import { apiClient } from '@/lib/api/client';
+import { FEATURES } from '@/lib/features';
 import {
   Sparkles, Video, MessageSquare, Mic,
   Loader2, Check, X, Wand2
@@ -168,8 +169,14 @@ export function AIToolsPanel({ projectId }: { projectId?: string }) {
   const tabs = [
     { id: 'captions', label: 'Captions', icon: MessageSquare },
     { id: 'templates', label: 'Templates', icon: Sparkles },
-    { id: 'video', label: 'AI Video', icon: Video },
-    { id: 'voiceover', label: 'Voice Over', icon: Mic },
+    // AI Video / Voice Over are hidden until a generation backend exists — the
+    // endpoints 501 and jobs would otherwise never complete (see FEATURES).
+    ...(FEATURES.aiGeneration
+      ? ([
+          { id: 'video', label: 'AI Video', icon: Video },
+          { id: 'voiceover', label: 'Voice Over', icon: Mic },
+        ] as const)
+      : []),
   ] as const;
 
   return (

@@ -11,6 +11,10 @@ primary_region = "iad"
 
 [build]
   dockerfile = "Dockerfile.frontend"
+  # NEXT_PUBLIC_* is inlined at build time (static export). This MUST be the
+  # production API origin, or the shipped bundle calls http://localhost:8000.
+  [build.args]
+    NEXT_PUBLIC_API_URL = "https://clipsmith-backend.fly.dev"
 
 [env]
   PORT = "3000"

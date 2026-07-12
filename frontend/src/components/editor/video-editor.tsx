@@ -68,8 +68,12 @@ export function VideoEditor({ projectId }: VideoEditorProps) {
     const [showAITools, setShowAITools] = useState(false);
     const [showAdvancedPanels, setShowAdvancedPanels] = useState(false);
     const [selectedTrackId, setSelectedTrackId] = useState<string | null>(null);
+    const [exportStatus, setExportStatus] = useState<'idle' | 'processing' | 'completed' | 'failed'>('idle');
+    const [exportUrl, setExportUrl] = useState<string | null>(null);
+    const [exportError, setExportError] = useState<string | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const animationRef = useRef<number>(undefined);
+    const exportPollRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
     // Initialize payment and analytics hooks
     const { sendTip, wallet: _wallet, transactions: _transactions } = usePayment();
@@ -99,6 +103,47 @@ export function VideoEditor({ projectId }: VideoEditorProps) {
             setIsLoading(false);
         }
     }, [projectId]);
+
+    const pollExportStatus = useCallback(async () => {
+        if (!projectId) return;
+        try {
+            const s = await apiClient<{ export_status: string; video_url: string | null; error: string | null }>(
+                `/api/editor/projects/${projectId}/export-status`
+            );
+            if (s.export_status === 'completed') {
+                setExportStatus('completed');
+                setExportUrl(s.video_url);
+            } else if (s.export_status === 'failed') {
+                setExportStatus('failed');
+                setExportError(s.error || 'Export failed');
+            } else {
+                setExportStatus('processing');
+                exportPollRef.current = setTimeout(pollExportStatus, 3000);
+            }
+        } catch {
+            setExportStatus('failed');
+            setExportError('Could not check export status');
+        }
+    }, [projectId]);
+
+    const handleExport = async () => {
+        if (!projectId || exportStatus === 'processing') return;
+        setExportStatus('processing');
+        setExportUrl(null);
+        setExportError(null);
+        try {
+            await apiClient(`/api/editor/projects/${projectId}/export`, {
+                method: 'POST',
+                body: JSON.stringify({ format: 'mp4', quality: '1080p' }),
+            });
+            exportPollRef.current = setTimeout(pollExportStatus, 3000);
+        } catch {
+            setExportStatus('failed');
+            setExportError('Could not start export');
+        }
+    };
+
+    useEffect(() => () => { if (exportPollRef.current) clearTimeout(exportPollRef.current); }, []);
 
     const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
         const files = event.target.files;
@@ -245,6 +290,29 @@ export function VideoEditor({ projectId }: VideoEditorProps) {
                         >
                             Upload
                         </button>
+
+                        {exportStatus === 'completed' && exportUrl ? (
+                            <a
+                                href={exportUrl}
+                                download
+                                className="px-2 sm:px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 text-xs sm:text-sm"
+                            >
+                                Download
+                            </a>
+                        ) : (
+                            <button
+                                onClick={handleExport}
+                                disabled={exportStatus === 'processing'}
+                                title={exportError || undefined}
+                                className="px-2 sm:px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 disabled:opacity-50 text-xs sm:text-sm"
+                            >
+                                {exportStatus === 'processing'
+                                    ? 'Exporting…'
+                                    : exportStatus === 'failed'
+                                    ? 'Retry Export'
+                                    : 'Export'}
+                            </button>
+                        )}
                     </div>
                 </div>
             </div>
